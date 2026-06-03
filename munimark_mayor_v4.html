@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>חיים ביבס — מודיעין | Munimark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  /* warm editorial paper + deep ink-navy. muted semantic palette. */
+  --paper:#F0EDE6;
+  --surface:#FFFFFF;
+  --surface-2:#F7F5F0;
+  --ink:#1A1815;
+  --ink-2:#54504A;
+  --ink-3:#928C81;
+  --line:#E2DDD2;
+  --line-2:#ECE8DF;
+  --accent:#1E3A5F;        /* deep institutional navy */
+  --accent-soft:#E9EDF2;
+  --pos:#2F7152;           /* forest */
+  --pos-soft:#E8F0EB;
+  --neg:#B0432F;           /* terracotta */
+  --neg-soft:#F6E9E5;
+  --brass:#9A6F25;         /* lead / brass */
+  --brass-soft:#F3ECDC;
+  --r:13px;
+  --rs:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:'Heebo',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;line-height:1.4}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.eyebrow{font-size:10.5px;letter-spacing:.13em;font-weight:600;color:var(--ink-3);text-transform:uppercase}
+
+/* NAV */
+nav{background:rgba(240,237,230,.82);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--line);padding:0 36px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-back{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);text-decoration:none;font-weight:500;transition:color .15s}
+.nav-back:hover{color:var(--ink)}
+.logo{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+.logo .mark{width:22px;height:22px;border-radius:6px;background:var(--accent);position:relative}
+.logo .mark::after{content:"";position:absolute;inset:6px 6px auto auto;width:6px;height:6px;border-radius:1px;background:var(--brass)}
+.nav-links{display:flex;gap:22px}
+.nav-links a{font-size:13px;color:var(--ink-2);text-decoration:none;font-weight:500;transition:color .15s}
+.nav-links a:hover{color:var(--ink)}
+
+.page{max-width:1160px;margin:0 auto;padding:34px 24px 96px}
+.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--line)}
+
+.section{margin-bottom:30px}
+.sec-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+.sec-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.sec-title small{display:block;font-size:12px;font-weight:500;color:var(--ink-3);letter-spacing:0;margin-top:2px}
+
+/* ═══ HERO ═══ */
+.hero{padding:30px 34px;display:grid;grid-template-columns:auto 1fr auto auto;gap:0;align-items:center}
+.hero-photo{width:90px;height:90px;border-radius:14px;object-fit:cover;background:var(--surface-2);border:1px solid var(--line);flex-shrink:0;filter:grayscale(.15);margin-inline-end:24px}
+.hero-main{padding-inline-end:28px;border-inline-end:1px solid var(--line)}
+.hero-name{font-size:30px;font-weight:800;letter-spacing:-.8px;line-height:1.02;margin-bottom:5px}
+.hero-city{font-size:14px;color:var(--ink-2);font-weight:500;margin-bottom:16px}
+.hero-municipality{padding-inline:28px;border-inline-end:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-width:160px}
+.muni-logo{width:56px;height:56px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.muni-name{font-size:12px;font-weight:700;color:var(--ink);text-align:center;line-height:1.3;letter-spacing:-.1px}
+.hero-meta{display:flex;align-items:center;flex-wrap:wrap;gap:0}
+.hero-meta .mi{display:flex;flex-direction:column;gap:2px;padding-inline-end:18px;margin-inline-end:18px;border-inline-end:1px solid var(--line)}
+.hero-meta .mi:last-child{border:none;margin:0;padding:0}
+.hero-meta .mi .l{font-size:10px;color:var(--ink-3);font-weight:500}
+.hero-meta .mi .v{font-size:13.5px;font-weight:700;letter-spacing:-.2px}
+.hero-meta .mi .v.ac{color:var(--accent)}
+
+.hero-score{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:120px;border-inline-start:1px solid var(--line);padding-inline-start:28px;margin-inline-start:0}
+.ring-wrap{position:relative;width:96px;height:96px}
+.ring-wrap svg{position:absolute;inset:0}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.ring-num{font-size:25px;font-weight:800;color:var(--ink-3);letter-spacing:-1px}
+.ring-sub{font-size:9px;color:var(--ink-3);font-weight:600;letter-spacing:.04em}
+.hero-score-label{font-size:12px;color:var(--ink-2);font-weight:600;text-align:center}
+.hero-score-note{font-size:10.5px;color:var(--ink-3);text-align:center;line-height:1.35}
+
+/* ═══ RANKINGS ═══ */
+.rank-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.rank-card{padding:22px 22px;display:flex;align-items:center;gap:20px}
+.rank-ring{position:relative;flex-shrink:0;width:64px;height:64px}
+.rank-ring svg{position:absolute;inset:0}
+.rank-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.rank-num{font-size:21px;font-weight:800;letter-spacing:-.5px}
+.rank-of{font-size:10px;color:var(--ink-3);font-weight:500;margin-top:1px}
+.rank-title{margin-bottom:6px}
+.rank-desc{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-.2px}
+.rank-meta{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+.rank-flag{display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-size:11.5px;font-weight:600}
+.rank-flag .dot{width:6px;height:6px;border-radius:50%}
+.rank-flag.good{color:var(--pos)}
+.rank-flag.mid{color:var(--brass)}
+.rank-flag.good .dot{background:var(--pos)}
+.rank-flag.mid .dot{background:var(--brass)}
+
+/* ═══ YEAR SELECTOR ═══ */
+.year-sel{display:inline-flex;gap:1px;background:var(--line-2);border:1px solid var(--line);border-radius:9px;padding:3px}
+.yr{padding:6px 13px;border-radius:6px;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--ink-2);transition:all .15s}
+.yr:hover{color:var(--ink)}
+.yr.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(26,24,21,.08)}
+
+/* ═══ KPI ═══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi{padding:18px 18px 14px;border-radius:var(--rs);border:1px solid var(--line);border-right:4px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:0;transition:border-color .15s}
+.kpi:hover{border-color:var(--ink-3)}
+.kpi.kpi-up{border-right-color:var(--pos)}
+.kpi.kpi-down{border-right-color:var(--neg)}
+.kpi.kpi-lead{border-right-color:var(--brass)}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.kpi-name{font-size:12px;color:var(--ink-2);font-weight:600;letter-spacing:-.1px}
+.kpi-lead-tag{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:var(--brass);letter-spacing:.04em}
+.kpi-lead-tag::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--brass)}
+.kpi-val{font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--ink);line-height:1}
+.kpi-trend{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:11.5px;font-weight:700}
+.kpi-trend.up{color:var(--pos)}.kpi-trend.down{color:var(--neg)}.kpi-trend.neu{color:var(--ink-3)}
+.kpi-since{font-size:10.5px;font-weight:500;color:var(--ink-3)}
+.kpi-spark{margin-top:13px;height:30px}
+.kpi-spark svg{display:block;width:100%;height:100%;overflow:visible}
+
+/* ═══ HIGHLIGHT RIBBON ═══ */
+.ribbon{display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:20px 28px;margin-bottom:22px;background:var(--accent);border-radius:var(--r);color:#fff}
+.ribbon .ri{display:flex;flex-direction:column;gap:5px;padding-inline:24px;border-inline-start:1px solid rgba(255,255,255,.15)}
+.ribbon .ri:first-child{border:none;padding-inline-start:0}
+.ribbon .ri .l{font-size:11px;font-weight:500;color:rgba(255,255,255,.62);letter-spacing:.02em}
+.ribbon .ri .v{font-size:21px;font-weight:800;letter-spacing:-.5px}
+.ribbon .ri .v .from{font-size:13px;font-weight:500;color:rgba(255,255,255,.6)}
+.ribbon .ri .v .arr{color:var(--brass);margin:0 5px;filter:brightness(1.5)}
+
+/* ═══ VIEW TOGGLE ═══ */
+.view-toggle{display:inline-flex;gap:1px;background:var(--line-2);border:1px solid var(--line);border-radius:8px;padding:3px}
+.vbtn{padding:6px 14px;border-radius:5px;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--ink-2);transition:all .15s}
+.vbtn:hover{color:var(--ink)}
+.vbtn.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(26,24,21,.08)}
+
+/* ═══ PERFORMANCE SMALL MULTIPLES ═══ */
+.perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pf-card{padding:18px 20px}
+.pf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+.pf-name{font-size:13.5px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.pf-cat{font-size:10px;color:var(--ink-3);font-weight:600;letter-spacing:.06em;margin-top:3px}
+.pf-delta{display:flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.pf-delta.up{color:var(--pos)}.pf-delta.down{color:var(--neg)}.pf-delta.neu{color:var(--ink-3)}
+.pf-cur{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.8px;margin-bottom:12px}
+.pf-cur small{font-size:12px;font-weight:500;color:var(--ink-3);letter-spacing:0}
+.pf-chart{height:66px;position:relative}
+
+/* ═══ TABLE ═══ */
+.tbl-wrap{overflow:hidden;border-radius:var(--r);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}
+th{text-align:right;padding:11px 16px;font-size:10.5px;font-weight:600;color:var(--ink-3);letter-spacing:.04em;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+th.num,td.num{text-align:left}
+td{padding:11px 16px;font-size:12.5px;border-bottom:1px solid var(--line-2);white-space:nowrap;color:var(--ink-2)}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--surface-2)}
+.td-metric{font-weight:600;color:var(--ink)}
+.td-v{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.td-cur{font-variant-numeric:tabular-nums;font-weight:700}
+.td-cur.up{color:var(--pos)}.td-cur.down{color:var(--neg)}.td-cur.neu{color:var(--ink-3)}
+.cat-chip{display:inline-block;padding:2px 9px;border-radius:5px;font-size:10.5px;font-weight:600;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line-2)}
+
+/* ═══ CONTEXT ═══ */
+.ctx{padding:6px 0;display:grid;grid-template-columns:repeat(5,1fr)}
+.ctx-i{display:flex;flex-direction:column;gap:5px;padding:16px 22px;border-inline-start:1px solid var(--line-2);border-bottom:1px solid var(--line-2)}
+.ctx-i:nth-child(5n+1){border-inline-start:none}
+.ctx-i:nth-last-child(-n+5){border-bottom:none}
+.ctx-l{font-size:10.5px;color:var(--ink-3);font-weight:500}
+.ctx-v{font-size:16px;font-weight:800;letter-spacing:-.4px}
+.ctx-v small{font-size:11px;font-weight:500;color:var(--ink-3)}
+
+footer{max-width:1160px;margin:0 auto;padding:0 24px 50px;font-size:11px;color:var(--ink-3);line-height:1.6}
+
+/* ANIM */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:no-preference){
+  .section{animation:fadeUp .45s cubic-bezier(.2,.7,.3,1) both}
+  .section:nth-child(2){animation-delay:.04s}
+  .section:nth-child(3){animation-delay:.08s}
+  .section:nth-child(4){animation-delay:.12s}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-back" href="#">→ כל הרשויות</a>
+  <div class="logo"><span class="mark"></span>Munimark</div>
+  <div class="nav-links">
+    <a href="#">השוואה</a>
+    <a href="#">מתודולוגיה</a>
+    <a href="#">אודות</a>
+  </div>
+</nav>
+
+<div class="page">
+
+<!-- HERO -->
+<div class="card hero section">
+  <img class="hero-photo" src="https://upload.wikimedia.org/wikipedia/commons/c/c2/%D7%97%D7%99%D7%99%D7%9D_%D7%91%D7%99%D7%91%D7%A1.jpg" alt="" onerror="this.style.background='#E5E1D8';this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'">
+  <div class="hero-main">
+    <div class="hero-name">חיים ביבס</div>
+    <div class="hero-city">ראש העירייה</div>
+    <div class="hero-meta">
+      <div class="mi"><span class="l">כהונה</span><span class="v ac">מ־2014</span></div>
+      <div class="mi"><span class="l">אשכול חברתי־כלכלי</span><span class="v">8 / 10</span></div>
+      <div class="mi"><span class="l">תושבים (2023)</span><span class="v num">97,565</span></div>
+      <div class="mi"><span class="l">מחוז</span><span class="v">המרכז</span></div>
+      <div class="mi"><span class="l">בבחירות האחרונות</span><span class="v num">88.1%</span></div>
+    </div>
+  </div>
+  <div class="hero-municipality">
+    <div class="muni-logo" style="background:transparent;border:none;padding:2px"><img src="data:image/png;base64,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" style="width:52px;height:52px;object-fit:contain"/></div>
+    <div class="muni-name">עיריית<br>מודיעין-מכבים-רעות</div>
+  </div>
+  <div class="hero-score">
+    <div class="ring-wrap">
+      <svg width="96" height="96" viewBox="0 0 96 96">
+        <circle cx="48" cy="48" r="40" fill="none" stroke="var(--line)" stroke-width="6" stroke-dasharray="3 5"/>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-num">—</div>
+        <div class="ring-sub">ציון כולל</div>
+      </div>
+    </div>
+    <div class="hero-score-label">טרם חושב</div>
+    <div class="hero-score-note">יעודכן עם<br>הרחבת המאגר</div>
+  </div>
+</div>
+
+<!-- RANKINGS -->
+<div class="rank-grid section">
+
+  <div class="card rank-card">
+    <div class="rank-ring" data-pct="50" data-color="var(--accent)">
+      <div class="rank-ring-center">
+        <div class="rank-num" style="color:var(--accent)" data-count="1">1</div>
+        <div class="rank-of">מתוך 2</div>
+      </div>
+    </div>
+    <div>
+      <div class="eyebrow rank-title">קבוצת השוואה</div>
+      <div class="rank-desc">אשכול 8 · 50–100K תושבים</div>
+      <div class="rank-meta">מודיעין, רעננה</div>
+      <span class="rank-flag good"><span class="dot"></span>מקום ראשון בקבוצה</span>
+    </div>
+  </div>
+
+  <div class="card rank-card">
+    <div class="rank-ring" data-pct="60" data-color="var(--pos)">
+      <div class="rank-ring-center">
+        <div class="rank-num" style="color:var(--pos)" data-count="2">2</div>
+        <div class="rank-of">מתוך 5</div>
+      </div>
+    </div>
+    <div>
+      <div class="eyebrow rank-title">דירוג באשכול 8</div>
+      <div class="rank-desc">כל גדלי הרשויות</div>
+      <div class="rank-meta">5 עיריות באשכול</div>
+      <span class="rank-flag good"><span class="dot"></span>עדיף מ־60% מהקבוצה</span>
+    </div>
+  </div>
+
+  <div class="card rank-card">
+    <div class="rank-ring" data-pct="0" data-color="var(--ink-3)" data-pending="1">
+      <div class="rank-ring-center">
+        <div class="rank-num" style="color:var(--ink-3)">—</div>
+        <div class="rank-of">מתוך 82</div>
+      </div>
+    </div>
+    <div>
+      <div class="eyebrow rank-title">דירוג ארצי</div>
+      <div class="rank-desc">בין כל העיריות</div>
+      <div class="rank-meta">82 עיריות בישראל</div>
+      <span class="rank-flag mid"><span class="dot"></span>ממתין להשלמת הנתונים</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- KPIs -->
+<div class="section">
+  <div class="sec-header">
+    <div class="sec-title">מדדי מפתח<small>בחר שנה להצגת הערך — המגמה מוצגת לכל הכהונה</small></div>
+    <div class="year-sel">
+      <button class="yr" onclick="setY(2019,this)">2019</button>
+      <button class="yr" onclick="setY(2020,this)">2020</button>
+      <button class="yr" onclick="setY(2021,this)">2021</button>
+      <button class="yr" onclick="setY(2022,this)">2022</button>
+      <button class="yr active" onclick="setY(2023,this)">2023</button>
+      <button class="yr" onclick="setY(2024,this)">2024</button>
+    </div>
+  </div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+</div>
+
+<!-- PERFORMANCE -->
+<div class="section">
+  <div class="sec-header">
+    <div class="sec-title">ביצועים לאורך הכהונה<small>סדרות שנתיות 2019–2024 · 18 מדדים</small></div>
+    <div class="view-toggle">
+      <button class="vbtn active" id="btnC" onclick="setView('charts')">גרפים</button>
+      <button class="vbtn" id="btnT" onclick="setView('table')">טבלה</button>
+    </div>
+  </div>
+
+  <div class="ribbon">
+    <div class="ri"><span class="l">מאזן הגירה</span><span class="v num"><span class="from">+27</span><span class="arr">→</span>+2,150</span></div>
+    <div class="ri"><span class="l">זכאות בגרות</span><span class="v num">+0.87 <span class="from">נק׳ אחוז</span></span></div>
+    <div class="ri"><span class="l">תקציב לנפש</span><span class="v num">+35.8%</span></div>
+  </div>
+
+  <div id="chartsView">
+    <div class="perf-grid" id="perfGrid"></div>
+  </div>
+  <div id="tableView" style="display:none">
+    <div class="tbl-wrap">
+      <table><thead><tr>
+        <th>מדד</th><th>קטגוריה</th>
+        <th class="num">2019</th><th class="num">2020</th><th class="num">2021</th><th class="num">2022</th><th class="num">2023</th><th class="num">2024</th><th class="num">שינוי</th>
+      </tr></thead><tbody id="tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT -->
+<div class="section">
+  <div class="sec-title" style="margin-bottom:14px">נתוני הקשר</div>
+  <div class="card">
+    <div class="ctx">
+      <div class="ctx-i"><span class="ctx-l">סוג רשות</span><span class="ctx-v">עירייה</span></div>
+      <div class="ctx-i"><span class="ctx-l">מחוז</span><span class="ctx-v">המרכז</span></div>
+      <div class="ctx-i"><span class="ctx-l">אוכלוסייה 2023</span><span class="ctx-v num">97,565</span></div>
+      <div class="ctx-i"><span class="ctx-l">אשכול</span><span class="ctx-v num">8 <small>/ 10</small></span></div>
+      <div class="ctx-i"><span class="ctx-l">פריפריאליות</span><span class="ctx-v num">6 <small>/ 10</small></span></div>
+      <div class="ctx-i"><span class="ctx-l">תוחלת חיים</span><span class="ctx-v num">87.5</span></div>
+      <div class="ctx-i"><span class="ctx-l">תואר ראשון+</span><span class="ctx-v num">32.1%</span></div>
+      <div class="ctx-i"><span class="ctx-l">צעירים 0–17</span><span class="ctx-v num">31.5%</span></div>
+      <div class="ctx-i"><span class="ctx-l">קשישים 65+</span><span class="ctx-v num">10.8%</span></div>
+      <div class="ctx-i"><span class="ctx-l">חברי מועצה</span><span class="ctx-v num">21</span></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  המקור: נתוני הלשכה המרכזית לסטטיסטיקה ומשרד הפנים · עיבוד Munimark · הערכים מוצגים לצורכי השוואה ואינם מהווים המלצה. הציון הכולל יחושב עם הרחבת מאגר הרשויות.
+</footer>
+
+<script>
+const D={
+  2019:{זכאות_בגרות:90.92,בגרות_סף:85.96,נשירה:0.42,תלמידים:28.45,חינוך_אחוז:53.84,רווחה_אחוז:6.07,תקציב_לנפש:6886.62,ארנונה:null,עצמיות:55.66,ביצוע:99.75,עודף:1587,מאזן:27,גידול:0.94,התחלות:122.4,גמר:210,מחזור:40.85,פחת:5.5,פסולת:1.38},
+  2020:{זכאות_בגרות:92.21,בגרות_סף:82.2,נשירה:0.44,תלמידים:28.01,חינוך_אחוז:50.7,רווחה_אחוז:6.05,תקציב_לנפש:7442.29,ארנונה:null,עצמיות:53.04,ביצוע:99.57,עודף:3056,מאזן:643,גידול:1.48,התחלות:474.8,גמר:288.8,מחזור:37.89,פחת:5.4,פסולת:1.47},
+  2021:{זכאות_בגרות:92.82,בגרות_סף:87.77,נשירה:0.5,תלמידים:27.97,חינוך_אחוז:50.55,רווחה_אחוז:6.83,תקציב_לנפש:7579.58,ארנונה:97.1,עצמיות:56.41,ביצוע:99.5,עודף:3706,מאזן:1672,גידול:2.58,התחלות:154.2,גמר:171.8,מחזור:18.23,פחת:5.5,פסולת:1.49},
+  2022:{זכאות_בגרות:91.94,בגרות_סף:88.14,נשירה:0.46,תלמידים:27.87,חינוך_אחוז:49.56,רווחה_אחוז:7.69,תקציב_לנפש:8015.46,ארנונה:96.8,עצמיות:57.4,ביצוע:99.72,עודף:2196,מאזן:1396,גידול:2.14,התחלות:166.2,גמר:177.5,מחזור:22.02,פחת:5.5,פסולת:1.45},
+  2023:{זכאות_בגרות:92.53,בגרות_סף:88.79,נשירה:0.51,תלמידים:27.93,חינוך_אחוז:49.54,רווחה_אחוז:7.89,תקציב_לנפש:8803.22,ארנונה:96.29,עצמיות:56.55,ביצוע:99.91,עודף:773,מאזן:2128,גידול:3.41,התחלות:195.8,גמר:436.7,מחזור:29.23,פחת:5.83,פסולת:1.51},
+  2024:{זכאות_בגרות:91.79,בגרות_סף:87.87,נשירה:0.5,תלמידים:27.68,חינוך_אחוז:48.94,רווחה_אחוז:8.05,תקציב_לנפש:9350.65,ארנונה:97.87,עצמיות:57.69,ביצוע:99.66,עודף:3153,מאזן:2150,גידול:3.02,התחלות:68.7,גמר:293.3,מחזור:18.54,פחת:5.3,פסולת:1.54}
+};
+const YRS=[2019,2020,2021,2022,2023,2024];
+
+const KPIS=[
+  {k:'זכאות_בגרות',l:'זכאות בגרות',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'נשירה',l:'נשירת תלמידים',dir:-1,f:v=>v.toFixed(2)+'%'},
+  {k:'מאזן',l:'מאזן הגירה',dir:1,f:v=>(v>0?'+':'')+Math.round(v).toLocaleString('he-IL'),lead:true},
+  {k:'התחלות',l:'התחלות בנייה',dir:1,f:v=>Math.round(v).toLocaleString('he-IL')},
+  {k:'עצמיות',l:'הכנסות עצמיות',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'ארנונה',l:'גביית ארנונה',dir:1,f:v=>v?v.toFixed(1)+'%':'—'},
+  {k:'תקציב_לנפש',l:'תקציב לנפש',dir:1,f:v=>'₪'+Math.round(v).toLocaleString('he-IL')},
+  {k:'מחזור',l:'מחזור פסולת',dir:1,f:v=>v?v.toFixed(1)+'%':'—'},
+];
+
+const ALL=[
+  {k:'זכאות_בגרות',l:'זכאות בגרות',cat:'חינוך',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'בגרות_סף',l:'בגרות סף אוני׳',cat:'חינוך',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'נשירה',l:'נשירה',cat:'חינוך',dir:-1,f:v=>v.toFixed(2)+'%'},
+  {k:'תלמידים',l:'תלמידים לכיתה',cat:'חינוך',dir:-1,f:v=>v.toFixed(1)},
+  {k:'חינוך_אחוז',l:'הוצ׳ חינוך',cat:'חינוך',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'תקציב_לנפש',l:'תקציב לנפש',cat:'פיננסי',dir:1,f:v=>'₪'+Math.round(v).toLocaleString('he-IL')},
+  {k:'ארנונה',l:'גביית ארנונה',cat:'פיננסי',dir:1,f:v=>v?v.toFixed(1)+'%':'—'},
+  {k:'עצמיות',l:'הכנסות עצמיות',cat:'פיננסי',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'ביצוע',l:'ביצוע תקציב',cat:'פיננסי',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'עודף',l:'עודף/גירעון',cat:'פיננסי',dir:1,f:v=>(v>0?'+':'')+v.toLocaleString('he-IL')},
+  {k:'רווחה_אחוז',l:'הוצ׳ רווחה',cat:'פיננסי',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'מאזן',l:'מאזן הגירה',cat:'דמוגרפיה',dir:1,f:v=>(v>0?'+':'')+Math.round(v).toLocaleString('he-IL')},
+  {k:'גידול',l:'גידול אוכלוסייה',cat:'דמוגרפיה',dir:1,f:v=>v.toFixed(1)+'%'},
+  {k:'התחלות',l:'התחלות בנייה',cat:'בנייה',dir:1,f:v=>Math.round(v).toLocaleString('he-IL')},
+  {k:'גמר',l:'גמר בנייה',cat:'בנייה',dir:1,f:v=>Math.round(v).toLocaleString('he-IL')},
+  {k:'מחזור',l:'מחזור פסולת',cat:'סביבה',dir:1,f:v=>v?v.toFixed(1)+'%':'—'},
+  {k:'פחת',l:'פחת מים',cat:'סביבה',dir:-1,f:v=>v.toFixed(1)+'%'},
+  {k:'פסולת',l:'פסולת לנפש',cat:'סביבה',dir:-1,f:v=>v.toFixed(2)+' ק"ג'},
+];
+
+const COL={pos:'#2F7152',neg:'#B0432F',neu:'#928C81',accent:'#1E3A5F',brass:'#9A6F25'};
+
+let curY=2023, pfCharts={};
+
+function setY(y,btn){
+  curY=y;
+  document.querySelectorAll('.yr').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderKPIs();
+}
+
+function dlt(k,from,to){
+  const b=D[from][k],c=D[to][k];
+  return (b!=null&&c!=null)?c-b:null;
+}
+
+/* Inline sparkline SVG. highlightIdx draws an emphasised endpoint marker. */
+function sparkSVG(vals,color,highlightIdx){
+  const W=100,H=30,pad=4;
+  const clean=vals.map((v,i)=>[i,v]).filter(p=>p[1]!=null);
+  if(clean.length<2) return '';
+  const ys=clean.map(p=>p[1]);
+  const min=Math.min(...ys),max=Math.max(...ys),range=(max-min)||1;
+  const stepX=W/(vals.length-1);
+  const X=i=>i*stepX;
+  const Y=v=>H-pad-((v-min)/range)*(H-2*pad);
+  const pts=clean.map(([i,v])=>[X(i),Y(v)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=d+` L ${pts[pts.length-1][0].toFixed(1)} ${H} L ${pts[0][0].toFixed(1)} ${H} Z`;
+  // highlight marker
+  let hl='';
+  const hv=vals[highlightIdx];
+  if(hv!=null){ hl=`<circle cx="${X(highlightIdx).toFixed(1)}" cy="${Y(hv).toFixed(1)}" r="3.2" fill="${color}" stroke="#fff" stroke-width="1.5"/>`; }
+  const lastIdx=clean[clean.length-1][0];
+  const endMark = lastIdx!==highlightIdx ? `<circle cx="${X(lastIdx).toFixed(1)}" cy="${Y(vals[lastIdx]).toFixed(1)}" r="1.8" fill="${color}"/>`:'';
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <path d="${area}" fill="${color}" opacity="0.07"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    ${endMark}${hl}
+  </svg>`;
+}
+
+function renderKPIs(){
+  const g=document.getElementById('kpiGrid');
+  const hi=YRS.indexOf(curY);
+  g.innerHTML=KPIS.map(m=>{
+    const v=D[curY][m.k];
+    const d=dlt(m.k,2019,curY);
+    const good=d===null?null:(m.dir===1?d>0:d<0);
+    const tCls=good===null?'neu':good?'up':'down';
+    const col=m.lead?COL.brass:(good===null?COL.neu:good?COL.pos:COL.neg);
+    const dStr=d===null?'—':(d>0?'+':'')+
+      (Math.abs(d)>100?Math.round(d).toLocaleString('he-IL'):
+       Math.abs(d)>10?Math.round(d):d.toFixed(2))+(m.k==='תקציב_לנפש'?'₪':'');
+    const vals=YRS.map(y=>D[y][m.k]);
+    const borderCls=m.lead?'kpi-lead':(good===null?'':good?'kpi-up':'kpi-down');
+    return `<div class="kpi ${borderCls}">
+      <div class="kpi-top">
+        <span class="kpi-name">${m.l}</span>
+        ${m.lead?`<span class="kpi-lead-tag">מוביל</span>`:''}
+      </div>
+      <div class="kpi-val num">${v!=null?m.f(v):'—'}</div>
+      <div class="kpi-trend ${tCls}">
+        ${tCls==='up'?'▲':tCls==='down'?'▼':'•'}
+        <span class="num">${dStr}</span>
+        <span class="kpi-since">מאז 2019</span>
+      </div>
+      <div class="kpi-spark">${sparkSVG(vals,col,hi)}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildPerf(){
+  const g=document.getElementById('perfGrid');
+  g.innerHTML='';
+  ALL.forEach(m=>{
+    const vals=YRS.map(y=>D[y][m.k]);
+    const cur=D[2024][m.k];
+    const d=dlt(m.k,2019,2024);
+    const good=d===null?null:(m.dir===1?d>0:d<0);
+    const tCls=good===null?'neu':good?'up':'down';
+    const dStr=d===null?'—':(d>0?'+':'')+
+      (Math.abs(d)>100?Math.round(d).toLocaleString('he-IL'):Math.abs(d)>10?Math.round(d):d.toFixed(2));
+    const lineCol=good===null?COL.neu:good?COL.pos:COL.neg;
+    const div=document.createElement('div');
+    div.className='card pf-card';
+    div.innerHTML=`
+      <div class="pf-head">
+        <div>
+          <div class="pf-name">${m.l}</div>
+          <div class="pf-cat">${m.cat}</div>
+        </div>
+        <div class="pf-delta ${tCls}">${tCls==='up'?'▲':tCls==='down'?'▼':'•'}<span class="num">${dStr}</span></div>
+      </div>
+      <div class="pf-cur num">${cur!=null?m.f(cur):'—'} <small>2024</small></div>
+      <div class="pf-chart"><canvas id="pf_${m.k}"></canvas></div>`;
+    g.appendChild(div);
+    setTimeout(()=>{
+      const ctx=document.getElementById('pf_'+m.k);
+      if(!ctx)return;
+      if(pfCharts[m.k])pfCharts[m.k].destroy();
+      const c2=ctx.getContext('2d');
+      const grad=c2.createLinearGradient(0,0,0,66);
+      grad.addColorStop(0,lineCol+'22');
+      grad.addColorStop(1,lineCol+'00');
+      const last=vals.map((v,i)=>i).filter(i=>vals[i]!=null).pop();
+      pfCharts[m.k]=new Chart(ctx,{
+        type:'line',
+        data:{
+          labels:YRS.map(String),
+          datasets:[{
+            data:vals,
+            borderColor:lineCol,
+            backgroundColor:grad,
+            borderWidth:1.75,
+            pointRadius:vals.map((v,i)=>i===last?3.5:0),
+            pointBackgroundColor:lineCol,
+            pointBorderColor:'#fff',
+            pointBorderWidth:1.5,
+            pointHoverRadius:5,
+            pointHoverBackgroundColor:lineCol,
+            pointHoverBorderColor:'#fff',
+            pointHoverBorderWidth:2,
+            pointHitRadius:16,
+            tension:.35,fill:true,spanGaps:true
+          }]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          layout:{padding:{top:4,bottom:0,left:2,right:2}},
+          plugins:{legend:{display:false},tooltip:{
+            backgroundColor:'#1A1815',titleColor:'rgba(255,255,255,.55)',bodyColor:'#fff',
+            titleFont:{family:'Heebo',size:10,weight:'600'},
+            bodyFont:{family:'Heebo',size:13,weight:'700'},
+            padding:10,cornerRadius:8,displayColors:false,rtl:true,
+            callbacks:{
+              title:c=>c[0].label,
+              label:c=>m.f(c.parsed.y)
+            }
+          }},
+          scales:{
+            x:{grid:{display:false},border:{display:false},ticks:{font:{family:'Heebo',size:9},color:'#B3ADA2',maxRotation:0,padding:2}},
+            y:{display:false,beginAtZero:false,grace:'18%'}
+          }
+        }
+      });
+    },40);
+  });
+}
+
+function buildTable(){
+  const b=document.getElementById('tbody');
+  b.innerHTML=ALL.map(m=>{
+    const vals=YRS.map(y=>D[y][m.k]);
+    const chg=dlt(m.k,2019,2024);
+    const good=chg===null?null:(m.dir===1?chg>0:chg<0);
+    const cls=chg===null?'neu':good?'up':'down';
+    const cs=chg===null?'—':(chg>0?'+':'')+
+      (Math.abs(chg)>100?Math.round(chg).toLocaleString('he-IL'):Math.abs(chg)>10?Math.round(chg):chg.toFixed(2));
+    return `<tr>
+      <td class="td-metric">${m.l}</td>
+      <td><span class="cat-chip">${m.cat}</span></td>
+      ${vals.map(v=>`<td class="num td-v">${v!=null?m.f(v):'—'}</td>`).join('')}
+      <td class="num td-cur ${cls}">${cs}</td>
+    </tr>`;
+  }).join('');
+}
+
+function setView(v){
+  const cc=document.getElementById('chartsView');
+  const tv=document.getElementById('tableView');
+  if(v==='charts'){cc.style.display='';tv.style.display='none';
+    document.getElementById('btnC').classList.add('active');
+    document.getElementById('btnT').classList.remove('active');}
+  else{cc.style.display='none';tv.style.display='';
+    document.getElementById('btnT').classList.add('active');
+    document.getElementById('btnC').classList.remove('active');}
+}
+
+/* Rank rings — draw + animate */
+function drawRankRings(){
+  document.querySelectorAll('.rank-ring').forEach(el=>{
+    const size=64, sw=5, r=(size-sw)/2, circ=2*Math.PI*r;
+    const pct=parseFloat(el.dataset.pct)||0;
+    const color=el.dataset.color||COL.accent;
+    const pending=el.dataset.pending==='1';
+    const track = pending
+      ? `<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--line)" stroke-width="${sw}" stroke-dasharray="3 5"/>`
+      : `<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--line-2)" stroke-width="${sw}"/>
+         <circle class="rk-arc" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}"
+           stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${circ.toFixed(2)}" stroke-linecap="round"
+           transform="rotate(-90 ${size/2} ${size/2})" data-target="${(circ*(1-pct/100)).toFixed(2)}" data-circ="${circ.toFixed(2)}"/>`;
+    const svg=`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${track}</svg>`;
+    el.insertAdjacentHTML('afterbegin',svg);
+  });
+}
+function animateRings(){
+  document.querySelectorAll('.rk-arc').forEach(el=>{
+    const target=parseFloat(el.dataset.target), circ=parseFloat(el.dataset.circ);
+    let start=null;const dur=950;
+    function step(ts){if(!start)start=ts;const p=Math.min((ts-start)/dur,1);const e=1-Math.pow(1-p,3);
+      el.style.strokeDashoffset=(circ-(circ-target)*e).toFixed(2);if(p<1)requestAnimationFrame(step);}
+    requestAnimationFrame(step);
+  });
+}
+function animCount(){
+  document.querySelectorAll('[data-count]').forEach(el=>{
+    const target=parseInt(el.dataset.count);let start=null;
+    function step(ts){if(!start)start=ts;const p=Math.min((ts-start)/650,1);
+      el.textContent=Math.round(target*p);if(p<1)requestAnimationFrame(step);}
+    requestAnimationFrame(step);
+  });
+}
+
+renderKPIs();
+buildPerf();
+buildTable();
+drawRankRings();
+setTimeout(()=>{animateRings();animCount();},250);
+</script>
+</body>
+</html>
