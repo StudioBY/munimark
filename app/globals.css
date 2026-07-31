@@ -130,6 +130,8 @@ body {
 .person-wiki-link:hover { text-decoration:underline; }
 .mayor-person-link { color:inherit;text-decoration:none;border-bottom:1px dashed var(--accent);transition:border-color .15s; }
 .mayor-person-link:hover { border-bottom-style:solid; }
+.term-section-gap { height:2px;margin:28px 0;background:repeating-linear-gradient(90deg,var(--line) 0,var(--line) 6px,transparent 6px,transparent 12px); }
+.term-section-auth { font-weight:400;color:var(--ink-2);font-size:0.85em; }
 
 /* ── LAYER SELECTOR (term switcher) ────────────────────── */
 .layer-sel { display:inline-flex;gap:1px;background:var(--line-2);border:1px solid var(--line);border-radius:9px;padding:3px; }

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import PerformanceChart from '@/app/mayor/[slug]/PerformanceChart'
 import type { Authority, Mayor, AuthorityYearly, MayorTerm } from '@/types/db'
-import { termDisplayLabel, layerYearRange } from '@/lib/getMayorForYear'
+import { termDisplayLabel, termAttributedYears, authorityTypePrefix } from '@/lib/getMayorForYear'
 
 interface Props {
   person: Mayor
@@ -49,7 +49,7 @@ const fmt = (v: number | null | undefined, fn: (n: number) => string) =>
 
 const COL = { pos: '#2F7152', neg: '#B0432F', neu: '#928C81', accent: '#1E3A5F', brass: '#9A6F25' }
 
-// ── KPI + ALL metrics (same as authority page) ───────────────────────────────
+// ── KPI config ───────────────────────────────────────────────────────────────
 const KPIS: { k: string; l: string; dir: 1 | -1 | 0; fn: (v: number) => string; lead?: boolean }[] = [
   { k: 'זכאות_בגרות', l: 'זכאות בגרות',   dir:  1, fn: f.pct1 },
   { k: 'נשירה',        l: 'נשירת תלמידים', dir: -1, fn: f.pct2 },
@@ -82,87 +82,81 @@ const ALL: { k: string; l: string; cat: string; dir: 1 | -1 | 0; fn: (v: number)
   { k: 'פסולת',         l: 'פסולת לנפש',             cat: 'סביבה',    dir: -1, fn: f.waste },
 ]
 
-// ── Term ordering for timeline ───────────────────────────────────────────────
+// ── Term ordering ────────────────────────────────────────────────────────────
 const TERM_ORDER = [
   'term_2013', 'term_2018', 'term_2023_special',
   'term_2024_regular', 'term_2024_nov', 'term_2025_feb',
   'term_2025_replacement', 'term_2026_repeat',
 ]
 
-function termYearRange(label: string): [number, number] {
-  if (label === 'term_2013') return [2013, 2018]
-  if (label === 'term_2018') return [2019, 2023]
-  if (label === 'term_2023_special') return [2023, 2025]
-  if (label === 'term_2024_regular') return [2024, 2025]
-  if (label === 'term_2024_nov') return [2024, 2025]
-  if (label === 'term_2025_feb') return [2025, 2025]
-  if (label === 'term_2025_replacement') return [2025, 2025]
-  if (label === 'term_2026_repeat') return [2026, 2030]
-  return [2024, 2030]
+// ── Per-term data group ──────────────────────────────────────────────────────
+interface TermGroup {
+  term: MayorTerm
+  auth: Authority | undefined
+  yearRange: [number, number]
+  years: number[]       // years within range that exist in authority_yearly
+  withData: number[]    // subset of years that have non-null metric values
 }
 
 export default function PersonProfile({ person, terms, authorities, years }: Props) {
-  const authMap = new Map(authorities.map(a => [a.symbol, a]))
+  const authMap = new Map(authorities.map(a => [`${a.symbol}|${a.authority_type}`, a]))
+  const authBySymbol = new Map(authorities.map(a => [a.symbol, a]))
 
   // Sort terms chronologically
   const sortedTerms = [...terms].sort(
     (a, b) => TERM_ORDER.indexOf(a.term_label) - TERM_ORDER.indexOf(b.term_label)
   )
 
-  // Compute the union of year ranges for this person's terms
-  const personYearSet = new Set<number>()
-  for (const t of sortedTerms) {
-    const [lo, hi] = termYearRange(t.term_label)
-    for (let y = lo; y <= hi; y++) personYearSet.add(y)
-  }
+  // Build the full year→metric map from ALL authority_yearly rows
+  const D = toYearMap(years)
 
-  // Filter authority_yearly to only their years
-  const sortedYears = years
-    .filter(y => personYearSet.has(y.data_year))
-    .sort((a, b) => a.data_year - b.data_year)
-  const D = toYearMap(sortedYears)
-  const YRS = sortedYears.map(y => y.data_year)
-  // Deduplicate (may have same year from multiple authority sources)
-  const uniqueYRS = [...new Set(YRS)].sort((a, b) => a - b)
+  // Build per-term groups with properly scoped years
+  const termGroups: TermGroup[] = sortedTerms.map(t => {
+    const auth = authMap.get(`${t.authority_symbol}|${t.authority_type}`) ?? authBySymbol.get(t.authority_symbol)
+    const [lo, hi] = termAttributedYears(t.term_label)
+    // Only include years that exist in authority_yearly AND fall in the term's range
+    const yrsInRange = years
+      .filter(y => y.data_year >= lo && y.data_year <= hi)
+      .map(y => y.data_year)
+    const uniqueYrs = [...new Set(yrsInRange)].sort((a, b) => a - b)
+    const withData = uniqueYrs.filter(y => D[y] && Object.values(D[y]).some(v => v != null))
+    return { term: t, auth, yearRange: [lo, hi], years: uniqueYrs, withData }
+  })
 
-  const withData = uniqueYRS.filter(y => D[y] && Object.values(D[y]).some(v => v != null))
-  const defaultYear = withData.length > 0 ? withData[withData.length - 1] : uniqueYRS[uniqueYRS.length - 1]
+  // Flatten all person-attributed years (for KPI section)
+  const allPersonYears = [...new Set(termGroups.flatMap(g => g.years))].sort((a, b) => a - b)
+  const allWithData = [...new Set(termGroups.flatMap(g => g.withData))].sort((a, b) => a - b)
+
+  const defaultYear = allWithData.length > 0 ? allWithData[allWithData.length - 1] : allPersonYears[allPersonYears.length - 1]
 
   const [curY, setCurY] = useState(defaultYear ?? 2024)
   const [view, setView] = useState<'charts' | 'table'>('charts')
 
-  // Is currently serving?
+  // Current and primary authority
   const currentTerm = terms.find(t => t.is_current)
-  const currentAuth = currentTerm ? authMap.get(currentTerm.authority_symbol) : null
+  const currentAuth = currentTerm
+    ? (authMap.get(`${currentTerm.authority_symbol}|${currentTerm.authority_type}`) ?? authBySymbol.get(currentTerm.authority_symbol))
+    : null
 
-  // Role label
   const roleLabel = (() => {
     if (currentTerm && currentAuth) {
-      const typeLabel = currentAuth.authority_type === 'עירייה' ? 'עיריית'
-        : currentAuth.authority_type === 'מועצה מקומית' ? 'מ. מקומית'
-        : 'מ. אזורית'
-      return `ראש ${typeLabel} ${currentAuth.name_display}`
+      return `ראש ${authorityTypePrefix(currentAuth.authority_type)} ${currentAuth.name_display}`
     }
-    // Past mayor
     const lastTerm = sortedTerms[sortedTerms.length - 1]
-    const lastAuth = lastTerm ? authMap.get(lastTerm.authority_symbol) : null
+    const lastAuth = lastTerm
+      ? (authMap.get(`${lastTerm.authority_symbol}|${lastTerm.authority_type}`) ?? authBySymbol.get(lastTerm.authority_symbol))
+      : null
     if (lastAuth) {
-      const typeLabel = lastAuth.authority_type === 'עירייה' ? 'עיריית'
-        : lastAuth.authority_type === 'מועצה מקומית' ? 'מ. מקומית'
-        : 'מ. אזורית'
-      return `כיהן/ה כראש ${typeLabel} ${lastAuth.name_display}`
+      return `כיהן/ה כראש ${authorityTypePrefix(lastAuth.authority_type)} ${lastAuth.name_display}`
     }
     return ''
   })()
 
-  // Primary authority for "back to authority page" link
-  const primaryAuth = currentAuth ?? (sortedTerms.length > 0 ? authMap.get(sortedTerms[sortedTerms.length - 1]?.authority_symbol) : null)
+  const primaryAuth = currentAuth ?? (sortedTerms.length > 0
+    ? (authMap.get(`${sortedTerms[sortedTerms.length - 1].authority_symbol}|${sortedTerms[sortedTerms.length - 1].authority_type}`) ?? authBySymbol.get(sortedTerms[sortedTerms.length - 1].authority_symbol))
+    : null)
 
-  // Initials for placeholder
   const initials = (person.name ?? '').split(/\s+/).map(w => w.charAt(0)).slice(0, 2).join('')
-
-  const firstYr = uniqueYRS[0]
-  const lastYr = uniqueYRS[uniqueYRS.length - 1]
 
   return (
     <>
@@ -210,7 +204,6 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
             </div>
           </div>
 
-          {/* Authority logo area */}
           {primaryAuth && (
             <div className="hero-municipality">
               <div className="muni-logo">
@@ -219,8 +212,7 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
                 </span>
               </div>
               <div className="muni-name">
-                {primaryAuth.authority_type === 'עירייה' ? 'עיריית' :
-                 primaryAuth.authority_type === 'מועצה מקומית' ? 'מ. מקומית' : 'מ. אזורית'}
+                {authorityTypePrefix(primaryAuth.authority_type)}
                 <br />{primaryAuth.name_display}
               </div>
             </div>
@@ -234,7 +226,7 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
           </div>
           <div className="term-timeline">
             {sortedTerms.map((t, i) => {
-              const auth = authMap.get(t.authority_symbol)
+              const auth = authMap.get(`${t.authority_symbol}|${t.authority_type}`) ?? authBySymbol.get(t.authority_symbol)
               const prev = sortedTerms[i - 1]
               const hasGap = prev && TERM_ORDER.indexOf(t.term_label) - TERM_ORDER.indexOf(prev.term_label) > 1
               return (
@@ -250,16 +242,16 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
           </div>
         </div>
 
-        {/* ── KPIs ──────────────────────────────────────────────── */}
+        {/* ── KPIs (all person years combined) ─────────────────── */}
         <div className="section">
           <div className="sec-header">
             <div className="sec-title">
               מדדי מפתח
-              <small>נתונים לכל תקופת הכהונה</small>
+              <small>נתונים לכל תקופות הכהונה</small>
             </div>
-            {withData.length > 0 ? (
+            {allWithData.length > 0 ? (
               <div className="year-sel">
-                {withData.map(yr => (
+                {allWithData.map(yr => (
                   <button key={yr} className={`yr${yr === curY ? ' active' : ''}`} onClick={() => setCurY(yr)}>
                     {yr}
                   </button>
@@ -270,11 +262,11 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
             )}
           </div>
 
-          {withData.length > 0 ? (
+          {allWithData.length > 0 ? (
             <div className="kpi-grid">
               {KPIS.map(m => {
                 const v = D[curY]?.[m.k]
-                const vals = withData.map(y => D[y]?.[m.k] ?? null)
+                const vals = allWithData.map(y => D[y]?.[m.k] ?? null)
                 const d = vals[0] != null && v != null ? v - vals[0] : null
                 const good = (m.dir === 0 || d === null) ? null : (m.dir === 1 ? d > 0 : d < 0)
                 const tCls = good === null ? 'neu' : good ? 'up' : 'down'
@@ -283,7 +275,6 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
                   (d > 0 ? '+' : '') + (Math.abs(d) > 100 ? Math.round(d).toLocaleString('he-IL')
                     : Math.abs(d) > 10 ? Math.round(d) : d.toFixed(2))
                 const borderCls = m.lead ? 'kpi-lead' : (good === null ? '' : good ? 'kpi-up' : 'kpi-down')
-                const hiIdx = withData.indexOf(curY)
 
                 return (
                   <div key={m.k} className={`kpi ${borderCls}`}>
@@ -295,7 +286,7 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
                     <div className={`kpi-trend ${tCls}`}>
                       {tCls === 'up' ? '▲' : tCls === 'down' ? '▼' : '•'}
                       <span className="num">{dStr}</span>
-                      {firstYr && <span className="kpi-since">מאז {firstYr}</span>}
+                      {allWithData[0] && <span className="kpi-since">מאז {allWithData[0]}</span>}
                     </div>
                   </div>
                 )
@@ -308,80 +299,95 @@ export default function PersonProfile({ person, terms, authorities, years }: Pro
           )}
         </div>
 
-        {/* ── PERFORMANCE ───────────────────────────────────────── */}
-        <div className="section">
-          {withData.length > 0 ? (<>
-            <div className="sec-header">
-              <div className="sec-title">
-                ביצועים לאורך הקדנציה
-                <small>סדרות שנתיות {firstYr}–{lastYr} · 18 מדדים</small>
-              </div>
-              <div className="view-toggle">
-                <button className={`vbtn${view === 'charts' ? ' active' : ''}`} onClick={() => setView('charts')}>גרפים</button>
-                <button className={`vbtn${view === 'table'  ? ' active' : ''}`} onClick={() => setView('table')}>טבלה</button>
+        {/* ── PERFORMANCE — one section per term ───────────────── */}
+        {termGroups.map((g, gi) => {
+          const prevGroup = termGroups[gi - 1]
+          const hasGap = prevGroup && TERM_ORDER.indexOf(g.term.term_label) - TERM_ORDER.indexOf(prevGroup.term.term_label) > 1
+          const [lo, hi] = g.yearRange
+          const rangeLabel = hi >= 2030 ? `${lo}–היום` : `${lo}–${hi}`
+
+          return (
+            <div key={g.term.id}>
+              {hasGap && <div className="term-section-gap" />}
+              <div className="section">
+                <div className="sec-header">
+                  <div className="sec-title">
+                    {termDisplayLabel(g.term.term_label)}
+                    {g.auth && <span className="term-section-auth"> · {g.auth.name_display}</span>}
+                    <small>{rangeLabel} · 18 מדדים</small>
+                  </div>
+                  {g.withData.length > 0 && (
+                    <div className="view-toggle">
+                      <button className={`vbtn${view === 'charts' ? ' active' : ''}`} onClick={() => setView('charts')}>גרפים</button>
+                      <button className={`vbtn${view === 'table'  ? ' active' : ''}`} onClick={() => setView('table')}>טבלה</button>
+                    </div>
+                  )}
+                </div>
+
+                {g.withData.length > 0 ? (<>
+                  {view === 'charts' && (
+                    <div className="perf-grid">
+                      {ALL.map(m => (
+                        <PerformanceChart
+                          key={m.k}
+                          metricKey={m.k}
+                          label={m.l}
+                          category={m.cat}
+                          years={g.withData}
+                          values={g.withData.map(y => D[y]?.[m.k] ?? null)}
+                          formatter={m.fn}
+                          direction={m.dir}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {view === 'table' && (
+                    <div className="tbl-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>מדד</th>
+                            <th>קטגוריה</th>
+                            {g.withData.map(y => <th key={y} className="num">{y}</th>)}
+                            <th className="num">שינוי</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ALL.map(m => {
+                            const vals = g.withData.map(y => D[y]?.[m.k] ?? null)
+                            const first = vals.find(v => v != null)
+                            const last = [...vals].reverse().find(v => v != null)
+                            const chg = (first != null && last != null) ? last - first : null
+                            const good = (m.dir === 0 || chg === null) ? null : (m.dir === 1 ? chg > 0 : chg < 0)
+                            const cls = chg === null ? 'neu' : good ? 'up' : 'down'
+                            const cs = chg === null ? '—' :
+                              (chg > 0 ? '+' : '') + (Math.abs(chg) > 100 ? Math.round(chg).toLocaleString('he-IL')
+                                : Math.abs(chg) > 10 ? Math.round(chg) : chg.toFixed(2))
+                            return (
+                              <tr key={m.k}>
+                                <td className="td-metric">{m.l}</td>
+                                <td><span className="cat-chip">{m.cat}</span></td>
+                                {vals.map((v, i) => (
+                                  <td key={i} className="num td-v">{fmt(v, m.fn)}</td>
+                                ))}
+                                <td className={`num td-cur ${cls}`}>{cs}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>) : (
+                  <div className="no-data-placeholder">
+                    <p>נתוני ביצוע יתווספו</p>
+                  </div>
+                )}
               </div>
             </div>
-
-            {view === 'charts' && (
-              <div className="perf-grid">
-                {ALL.map(m => (
-                  <PerformanceChart
-                    key={m.k}
-                    metricKey={m.k}
-                    label={m.l}
-                    category={m.cat}
-                    years={withData}
-                    values={withData.map(y => D[y]?.[m.k] ?? null)}
-                    formatter={m.fn}
-                    direction={m.dir}
-                  />
-                ))}
-              </div>
-            )}
-
-            {view === 'table' && (
-              <div className="tbl-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>מדד</th>
-                      <th>קטגוריה</th>
-                      {withData.map(y => <th key={y} className="num">{y}</th>)}
-                      <th className="num">שינוי</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ALL.map(m => {
-                      const vals = withData.map(y => D[y]?.[m.k] ?? null)
-                      const first = vals.find(v => v != null)
-                      const last = [...vals].reverse().find(v => v != null)
-                      const chg = (first != null && last != null) ? last - first : null
-                      const good = (m.dir === 0 || chg === null) ? null : (m.dir === 1 ? chg > 0 : chg < 0)
-                      const cls = chg === null ? 'neu' : good ? 'up' : 'down'
-                      const cs = chg === null ? '—' :
-                        (chg > 0 ? '+' : '') + (Math.abs(chg) > 100 ? Math.round(chg).toLocaleString('he-IL')
-                          : Math.abs(chg) > 10 ? Math.round(chg) : chg.toFixed(2))
-                      return (
-                        <tr key={m.k}>
-                          <td className="td-metric">{m.l}</td>
-                          <td><span className="cat-chip">{m.cat}</span></td>
-                          {vals.map((v, i) => (
-                            <td key={i} className="num td-v">{fmt(v, m.fn)}</td>
-                          ))}
-                          <td className={`num td-cur ${cls}`}>{cs}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>) : (
-            <div className="no-data-placeholder">
-              <p>נתוני ביצוע יתווספו</p>
-            </div>
-          )}
-        </div>
+          )
+        })}
 
       </div>
 

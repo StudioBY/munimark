@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import PerformanceChart from './PerformanceChart'
 import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm } from '@/types/db'
-import { getMayorForYear, termDisplayLabel, layerYearRange, layerRepresentativeYear } from '@/lib/getMayorForYear'
+import { getMayorForYear, termDisplayLabel, layerYearRange, layerRepresentativeYear, authorityTypePrefix } from '@/lib/getMayorForYear'
 import type { MayorForYear } from '@/lib/getMayorForYear'
 
 type Layer = '2013' | '2018' | '2024'
@@ -357,7 +357,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
                 <span className="term-badge">{displayTermBadge}</span>
               )}
             </div>
-            <div className="hero-city">ראש {authority.authority_type === 'עירייה' ? 'העירייה' : 'הרשות'}</div>
+            <div className="hero-city">ראש {authority.authority_type === 'עירייה' ? 'העירייה' : authority.authority_type === 'מועצה מקומית' ? 'המועצה המקומית' : 'המועצה האזורית'}</div>
             <div className="hero-meta">
               {tenureYear && (
                 <div className="mi">
@@ -398,8 +398,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)' }}>{initials}</span>
             </div>
             <div className="muni-name">
-              {authority.authority_type === 'עירייה' ? 'עיריית' :
-               authority.authority_type === 'מועצה מקומית' ? 'מ. מקומית' : 'מ. אזורית'}
+              {authorityTypePrefix(authority.authority_type)}
               <br />{authority.name_display}
             </div>
           </div>

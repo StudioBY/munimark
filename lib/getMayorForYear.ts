@@ -130,6 +130,28 @@ export function layerYearRange(layer: '2013' | '2018' | '2024'): [number, number
   }
 }
 
+/** Map a term_label to its attributed CBS data year range */
+export function termAttributedYears(termLabel: string): [number, number] {
+  switch (termLabel) {
+    case 'term_2013':             return [2013, 2018]
+    case 'term_2018':             return [2019, 2023]
+    case 'term_2023_special':     return [2023, 2025]
+    case 'term_2024_regular':     return [2024, 2026]
+    case 'term_2024_nov':         return [2025, 2026]
+    case 'term_2025_feb':         return [2025, 2026]
+    case 'term_2025_replacement': return [2026, 2030]
+    case 'term_2026_repeat':      return [2026, 2030]
+    default:                      return [2024, 2030]
+  }
+}
+
+/** Format authority type for display: עירייה→"עיריית", etc. */
+export function authorityTypePrefix(authorityType: string | null): string {
+  if (authorityType === 'עירייה') return 'עיריית'
+  if (authorityType === 'מועצה מקומית') return 'מ. מקומית'
+  return 'מ. אזורית'
+}
+
 /** Map a layer id to the term_label used to find the representative mayor */
 export function layerRepresentativeYear(layer: '2013' | '2018' | '2024'): number {
   switch (layer) {
