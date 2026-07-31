@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import PerformanceChart from './PerformanceChart'
-import type { Authority, Mayor, AuthorityYearly, Score } from '@/types/db'
+import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm } from '@/types/db'
+import { getMayorForYear, termDisplayLabel, layerYearRange, layerRepresentativeYear } from '@/lib/getMayorForYear'
+import type { MayorForYear } from '@/lib/getMayorForYear'
+
+type Layer = '2013' | '2018' | '2024'
 
 interface Props {
   authority: Authority
@@ -11,6 +15,7 @@ interface Props {
   years: AuthorityYearly[]
   latestYear: AuthorityYearly
   score: Score | null
+  mayorTerms: MayorTerm[]
 }
 
 // ── Colours ───────────────────────────────────────────────────────────────────
@@ -234,15 +239,41 @@ function HeroRing({ score, maxScore }: { score: number | null, maxScore: number 
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function MayorProfile({ authority, mayor, years, latestYear, score }: Props) {
+export default function MayorProfile({ authority, mayor, years, latestYear, score, mayorTerms }: Props) {
   const sortedYears = [...years].sort((a, b) => a.data_year - b.data_year)
-  const YRS = sortedYears.map(y => y.data_year)
-  const firstYr = YRS[0]
-  const lastYr  = YRS[YRS.length - 1]
+  const allYRS = sortedYears.map(y => y.data_year)
   const D = toYearMap(sortedYears)
+
+  // ── Layer state (term selector) ──
+  const [layer, setLayer] = useState<Layer>('2024')
+  const [range] = [layerYearRange(layer)]
+  const YRS = allYRS.filter(y => y >= range[0] && y <= range[1])
+  const firstYr = YRS[0] ?? allYRS[0]
+  const lastYr  = YRS[YRS.length - 1] ?? allYRS[allYRS.length - 1]
 
   const [curY, setCurY]  = useState(lastYr)
   const [view, setView]  = useState<'charts'|'table'>('charts')
+
+  // Reset curY when layer changes
+  useEffect(() => {
+    const newYRS = allYRS.filter(y => y >= range[0] && y <= range[1])
+    if (newYRS.length > 0) {
+      setCurY(newYRS[newYRS.length - 1])
+    }
+  }, [layer])
+
+  // ── Term-aware mayor resolution ──
+  const hasTerms = mayorTerms.length > 0
+  const repYear = layerRepresentativeYear(layer)
+  const termMayor: MayorForYear | null = hasTerms
+    ? getMayorForYear(mayorTerms, repYear)
+    : null
+
+  // Displayed mayor name: prefer term data, fall back to old 1:1
+  const displayName = termMayor?.full_name ?? mayor?.name ?? 'פרטי ראש הרשות בקרוב'
+  const displayPhoto = termMayor?.person?.photo_url ?? mayor?.photo_url ?? null
+  const displayElectionPct = termMayor?.election_pct ?? mayor?.election_pct ?? null
+  const displayTermBadge = termMayor ? termDisplayLabel(termMayor.term_label) : null
 
   const tenureYear = mayor?.tenure_start
     ? parseInt(mayor.tenure_start.split('/').pop() ?? '')
@@ -286,11 +317,11 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
         {/* ── HERO ──────────────────────────────────────────────── */}
         <div className="card hero section">
           {/* Photo */}
-          {mayor?.photo_url ? (
+          {displayPhoto ? (
             <img
               className="hero-photo"
-              src={mayor.photo_url}
-              alt={mayor.name ?? ''}
+              src={displayPhoto}
+              alt={displayName}
               onError={(e) => { (e.target as HTMLImageElement).style.background = '#E5E1D8' }}
             />
           ) : (
@@ -302,7 +333,10 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
           {/* Name + meta */}
           <div className="hero-main">
             <div className="hero-name">
-              {mayor?.name ?? 'פרטי ראש הרשות בקרוב'}
+              {displayName}
+              {displayTermBadge && (
+                <span className="term-badge">{displayTermBadge}</span>
+              )}
             </div>
             <div className="hero-city">ראש {latestYear.h_authority_type === 'עירייה' ? 'העירייה' : 'הרשות'}</div>
             <div className="hero-meta">
@@ -330,10 +364,10 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
                   <span className="v">{latestYear.h_district}</span>
                 </div>
               )}
-              {mayor?.election_pct && (
+              {displayElectionPct && (
                 <div className="mi">
                   <span className="l">בבחירות האחרונות</span>
-                  <span className="v num">{mayor.election_pct}</span>
+                  <span className="v num">{displayElectionPct}</span>
                 </div>
               )}
             </div>
@@ -421,59 +455,87 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
 
         </div>
 
+        {/* ── Layer selector (term switcher) ─────────────────── */}
+        <div className="section">
+          <div className="sec-header">
+            <div className="sec-title">
+              קדנציה
+              <small>בחר קדנציה להצגת ראש הרשות ומדדי הביצוע בתקופה</small>
+            </div>
+            <div className="layer-sel">
+              {(['2024', '2018', '2013'] as Layer[]).map(l => (
+                <button key={l} className={`layer-btn${l === layer ? ' active' : ''}`} onClick={() => setLayer(l)}>
+                  {l === '2024' ? 'קדנציה נוכחית' : `קדנציית ${l}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* ── KPIs ──────────────────────────────────────────────── */}
         <div className="section">
           <div className="sec-header">
             <div className="sec-title">
               מדדי מפתח
-              <small>בחר שנה להצגת הערך — המגמה מוצגת לכל הכהונה</small>
+              <small>בחר שנה להצגת הערך — המגמה מוצגת לכל הקדנציה</small>
             </div>
-            <div className="year-sel">
-              {YRS.map(yr => (
-                <button key={yr} className={`yr${yr === curY ? ' active' : ''}`} onClick={() => setCurY(yr)}>
-                  {yr}
-                </button>
-              ))}
-            </div>
+            {YRS.length > 0 ? (
+              <div className="year-sel">
+                {YRS.map(yr => (
+                  <button key={yr} className={`yr${yr === curY ? ' active' : ''}`} onClick={() => setCurY(yr)}>
+                    {yr}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="year-sel-empty">אין נתונים לקדנציה זו</div>
+            )}
           </div>
-          <div className="kpi-grid">
-            {KPIS.map(m => {
-              const v    = D[curY]?.[m.k]
-              const vals = YRS.map(y => D[y]?.[m.k] ?? null)
-              const d    = vals[0] != null && v != null ? v - vals[0] : null
-              const good = (m.dir === 0 || d === null) ? null : (m.dir === 1 ? d > 0 : d < 0)
-              const tCls = good === null ? 'neu' : good ? 'up' : 'down'
-              const col  = m.lead ? COL.brass : (good === null ? COL.neu : good ? COL.pos : COL.neg)
-              const dStr = d === null ? '—' :
-                (d > 0 ? '+' : '') + (Math.abs(d) > 100 ? Math.round(d).toLocaleString('he-IL')
-                  : Math.abs(d) > 10 ? Math.round(d) : d.toFixed(2))
-              const borderCls = m.lead ? 'kpi-lead' : (good === null ? '' : good ? 'kpi-up' : 'kpi-down')
-              const hiIdx = YRS.indexOf(curY)
+          {YRS.length > 0 ? (
+            <div className="kpi-grid">
+              {KPIS.map(m => {
+                const v    = D[curY]?.[m.k]
+                const vals = YRS.map(y => D[y]?.[m.k] ?? null)
+                const d    = vals[0] != null && v != null ? v - vals[0] : null
+                const good = (m.dir === 0 || d === null) ? null : (m.dir === 1 ? d > 0 : d < 0)
+                const tCls = good === null ? 'neu' : good ? 'up' : 'down'
+                const col  = m.lead ? COL.brass : (good === null ? COL.neu : good ? COL.pos : COL.neg)
+                const dStr = d === null ? '—' :
+                  (d > 0 ? '+' : '') + (Math.abs(d) > 100 ? Math.round(d).toLocaleString('he-IL')
+                    : Math.abs(d) > 10 ? Math.round(d) : d.toFixed(2))
+                const borderCls = m.lead ? 'kpi-lead' : (good === null ? '' : good ? 'kpi-up' : 'kpi-down')
+                const hiIdx = YRS.indexOf(curY)
 
-              return (
-                <div key={m.k} className={`kpi ${borderCls}`}>
-                  <div className="kpi-top">
-                    <span className="kpi-name">{m.l}</span>
-                    {m.lead && <span className="kpi-lead-tag">מוביל</span>}
+                return (
+                  <div key={m.k} className={`kpi ${borderCls}`}>
+                    <div className="kpi-top">
+                      <span className="kpi-name">{m.l}</span>
+                      {m.lead && <span className="kpi-lead-tag">מוביל</span>}
+                    </div>
+                    <div className="kpi-val num">{fmt(v, m.fn)}</div>
+                    <div className={`kpi-trend ${tCls}`}>
+                      {tCls === 'up' ? '▲' : tCls === 'down' ? '▼' : '•'}
+                      <span className="num">{dStr}</span>
+                      <span className="kpi-since">מאז {firstYr}</span>
+                    </div>
+                    <SparkSVG vals={vals} color={col} highlightIdx={hiIdx} />
                   </div>
-                  <div className="kpi-val num">{fmt(v, m.fn)}</div>
-                  <div className={`kpi-trend ${tCls}`}>
-                    {tCls === 'up' ? '▲' : tCls === 'down' ? '▼' : '•'}
-                    <span className="num">{dStr}</span>
-                    <span className="kpi-since">מאז {firstYr}</span>
-                  </div>
-                  <SparkSVG vals={vals} color={col} highlightIdx={hiIdx} />
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="no-data-placeholder">
+              <p>נתוני ביצוע יתווספו</p>
+            </div>
+          )}
         </div>
 
         {/* ── PERFORMANCE ───────────────────────────────────────── */}
         <div className="section">
+          {YRS.length > 0 ? (<>
           <div className="sec-header">
             <div className="sec-title">
-              ביצועים לאורך הכהונה
+              ביצועים לאורך הקדנציה
               <small>סדרות שנתיות {firstYr}–{lastYr} · 18 מדדים</small>
             </div>
             <div className="view-toggle">
@@ -559,6 +621,11 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+          </>) : (
+            <div className="no-data-placeholder">
+              <p>נתוני ביצוע יתווספו</p>
             </div>
           )}
         </div>

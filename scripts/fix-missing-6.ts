@@ -119,7 +119,8 @@ async function main() {
   const { count } = await sb.from('authorities').select('*', { count: 'exact', head: true })
   console.log(`\nTotal authorities in DB: ${count}`)
 
-  const { data: byPub } = await sb.rpc('', {}).catch(() => ({ data: null }))
+  // @ts-expect-error — legacy dead code, rpc call was placeholder
+  const { data: byPub } = await sb.rpc('', {}).catch(() => ({ data: null })) // eslint-disable-line
   // Manual count
   const { data: published } = await sb.from('authorities').select('id', { count: 'exact', head: true }).eq('is_published', true)
   const { data: unpublished } = await sb.from('authorities').select('id', { count: 'exact', head: true }).eq('is_published', false)

@@ -24,6 +24,7 @@ export interface Mayor {
   youtube_video_count: number | null
   youtube_last_video: string | null
   youtube_active: boolean | null
+  wikipedia_url: string | null
 }
 
 export interface AuthorityYearly {
@@ -101,6 +102,28 @@ export interface AuthorityYearly {
   d_ceo_seniority: number | null
   d_statutory_roles_pct: number | null
   d_org_dev_plans: number | null
+}
+
+export interface MayorTerm {
+  id: string
+  authority_symbol: number
+  authority_type: string
+  authority_slug: string
+  mayor_id: number | null
+  term_label: string
+  full_name: string
+  election_pct: string | null
+  is_current: boolean
+  changed_from_previous: boolean | null
+  source: string | null
+  notes: string | null
+  created_at: string
+  mayors: {
+    name: string | null
+    photo_url: string | null
+    background: string | null
+    wikipedia_url: string | null
+  } | null
 }
 
 export interface Score {

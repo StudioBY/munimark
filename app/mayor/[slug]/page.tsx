@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Authority, Mayor, AuthorityYearly, Score } from '@/types/db'
+import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm } from '@/types/db'
 import MayorProfile from './MayorProfile'
 
 interface Props {
@@ -47,7 +47,7 @@ export default async function MayorPage({ params }: Props) {
 
   if (!authority) notFound()
 
-  const [{ data: mayor }, { data: years }, { data: score }] = await Promise.all([
+  const [{ data: mayor }, { data: years }, { data: score }, { data: mayorTerms }] = await Promise.all([
     supabase
       .from('mayors')
       .select('*')
@@ -66,6 +66,12 @@ export default async function MayorPage({ params }: Props) {
       .order('data_year', { ascending: false })
       .limit(1)
       .single<Score>(),
+    supabase
+      .from('mayor_terms')
+      .select('*, mayors(name, photo_url, background, wikipedia_url)')
+      .eq('authority_symbol', authority.symbol)
+      .eq('authority_type', authority.authority_type ?? '')
+      .returns<MayorTerm[]>(),
   ])
 
   const yearList = years ?? []
@@ -89,6 +95,7 @@ export default async function MayorPage({ params }: Props) {
       years={yearList}
       latestYear={latestYear}
       score={score ?? null}
+      mayorTerms={mayorTerms ?? []}
     />
   )
 }
