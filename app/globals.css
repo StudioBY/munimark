@@ -114,6 +114,9 @@ body {
 .rank-flag.good .dot { background:var(--pos); }
 .rank-flag.mid  .dot { background:var(--brass); }
 
+/* ── INITIALS AVATAR (placeholder when no photo) ───────── */
+.hero-photo-initials { display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:var(--accent);background:var(--accent-soft);letter-spacing:1px; }
+
 /* ── TERM BADGE ─────────────────────────────────────────── */
 .term-badge { display:inline-block;margin-right:10px;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;background:var(--accent-soft);color:var(--accent);vertical-align:middle; }
 

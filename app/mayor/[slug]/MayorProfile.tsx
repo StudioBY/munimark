@@ -254,10 +254,18 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
   const [curY, setCurY]  = useState(lastYr)
   const [view, setView]  = useState<'charts'|'table'>('charts')
 
-  // Reset curY when layer changes
+  // Reset curY when layer changes — pick latest year with actual data
   useEffect(() => {
     const newYRS = allYRS.filter(y => y >= range[0] && y <= range[1])
-    if (newYRS.length > 0) {
+    // Find latest year that has at least one non-null B-field value
+    const withData = newYRS.filter(y => {
+      const row = D[y]
+      if (!row) return false
+      return Object.values(row).some(v => v != null)
+    })
+    if (withData.length > 0) {
+      setCurY(withData[withData.length - 1])
+    } else if (newYRS.length > 0) {
       setCurY(newYRS[newYRS.length - 1])
     }
   }, [layer])
@@ -269,11 +277,19 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
     ? getMayorForYear(mayorTerms, repYear)
     : null
 
-  // Displayed mayor name: prefer term data, fall back to old 1:1
+  // Displayed mayor: prefer term data, fall back to old 1:1 only for current term
   const displayName = termMayor?.full_name ?? mayor?.name ?? 'פרטי ראש הרשות בקרוב'
-  const displayPhoto = termMayor?.person?.photo_url ?? mayor?.photo_url ?? null
-  const displayElectionPct = termMayor?.election_pct ?? mayor?.election_pct ?? null
+  const isCurrentTerm = termMayor?.term_label
+    ? mayorTerms.some(t => t.term_label === termMayor.term_label && t.is_current)
+    : false
+  // Only fall back to old 1:1 photo when viewing the current term (identity match)
+  const displayPhoto = termMayor?.person?.photo_url
+    ?? (isCurrentTerm ? mayor?.photo_url : null)
+    ?? null
+  const displayElectionPct = termMayor?.election_pct ?? (isCurrentTerm ? mayor?.election_pct : null) ?? null
   const displayTermBadge = termMayor ? termDisplayLabel(termMayor.term_label) : null
+  // Initials from the displayed mayor's name (for placeholder avatar)
+  const mayorInitials = displayName.split(/\s+/).map(w => w.charAt(0)).slice(0, 2).join('')
 
   const tenureYear = mayor?.tenure_start
     ? parseInt(mayor.tenure_start.split('/').pop() ?? '')
@@ -325,8 +341,8 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               onError={(e) => { (e.target as HTMLImageElement).style.background = '#E5E1D8' }}
             />
           ) : (
-            <div className="hero-photo" style={{ display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,fontWeight:800,color:'var(--accent)',background:'var(--line-2)' }}>
-              {authority.name_display.charAt(0)}
+            <div className="hero-photo hero-photo-initials">
+              {mayorInitials}
             </div>
           )}
 
@@ -338,7 +354,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
                 <span className="term-badge">{displayTermBadge}</span>
               )}
             </div>
-            <div className="hero-city">ראש {latestYear.h_authority_type === 'עירייה' ? 'העירייה' : 'הרשות'}</div>
+            <div className="hero-city">ראש {authority.authority_type === 'עירייה' ? 'העירייה' : 'הרשות'}</div>
             <div className="hero-meta">
               {tenureYear && (
                 <div className="mi">
@@ -379,8 +395,8 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)' }}>{initials}</span>
             </div>
             <div className="muni-name">
-              {latestYear.h_authority_type === 'עירייה' ? 'עיריית' :
-               latestYear.h_authority_type === 'מועצה מקומית' ? 'מ. מקומית' : 'מ. אזורית'}
+              {authority.authority_type === 'עירייה' ? 'עיריית' :
+               authority.authority_type === 'מועצה מקומית' ? 'מ. מקומית' : 'מ. אזורית'}
               <br />{authority.name_display}
             </div>
           </div>
@@ -413,7 +429,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
             <div>
               <div className="eyebrow rank-title">קבוצת השוואה</div>
               <div className="rank-desc">
-                {latestYear.h_authority_type} · אשכול {latestYear.h_socio_cluster}
+                {authority.authority_type ?? latestYear.h_authority_type} · אשכול {latestYear.h_socio_cluster}
               </div>
               <div className="rank-meta">
                 {score?.comparison_group ?? 'טרם חושב'}
