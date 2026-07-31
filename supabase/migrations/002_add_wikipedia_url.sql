@@ -1,0 +1,1 @@
+ALTER TABLE mayors ADD COLUMN IF NOT EXISTS wikipedia_url TEXT;

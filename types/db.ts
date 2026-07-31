@@ -5,6 +5,8 @@ export interface Authority {
   name_cbs: string
   slug: string
   entity_id_obudget: string | null
+  authority_type: string | null
+  is_published: boolean
 }
 
 export interface Mayor {
@@ -41,6 +43,10 @@ export interface AuthorityYearly {
   h_ba_degree_pct: number | null
   h_life_expectancy: number | null
   h_council_members: number | null
+  // H (munidata)
+  h_nafa: string | null
+  h_profile_group: string | null
+  h_confrontation_line: string | null
   // B
   b_budget_per_capita: number | null
   b_arnona_collection_pct: number | null
@@ -62,10 +68,39 @@ export interface AuthorityYearly {
   b_waste_per_capita: number | null
   b_edu_invest_per_capita: number | null
   b_welfare_invest_per_capita: number | null
-  // D
+  // D (CBS)
   d_accidents_per_1000: number | null
   d_sewage_treated_pct: number | null
   d_water_violations: number | null
+  // D (munidata — demographics)
+  d_natural_increase: number | null
+  d_avg_wage: number | null
+  // D (munidata — budget & economy)
+  d_arnona_charge_per_sqm: number | null
+  d_arnona_other_share: number | null
+  d_debt_per_household: number | null
+  d_debt_repayment_rate: number | null
+  d_net_accum_deficit: number | null
+  d_loan_burden_ratio: number | null
+  d_debt_concentration: number | null
+  d_municipal_corporations: number | null
+  d_audit_deficiencies: number | null
+  d_total_income: number | null
+  d_dev_funds_balance: number | null
+  d_extraordinary_income: number | null
+  d_extraordinary_expenses: number | null
+  d_dev_project_funds: number | null
+  // D (munidata — gov mechanisms)
+  d_govt_tenders: number | null
+  d_equalization_grants: number | null
+  d_dev_grants: number | null
+  d_gap_reduction_fund: number | null
+  d_regional_services: number | null
+  // D (munidata — human capital)
+  d_cadets: number | null
+  d_ceo_seniority: number | null
+  d_statutory_roles_pct: number | null
+  d_org_dev_plans: number | null
 }
 
 export interface Score {

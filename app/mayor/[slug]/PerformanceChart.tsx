@@ -19,7 +19,7 @@ interface Props {
   years: number[]
   values: (number | null)[]
   formatter: (v: number) => string
-  direction: 1 | -1   // 1 = higher better, -1 = lower better
+  direction: 1 | -1 | 0  // 1 = higher better, -1 = lower better, 0 = display only
 }
 
 export default function PerformanceChart({ metricKey, label, category, years, values, formatter, direction }: Props) {
@@ -30,7 +30,7 @@ export default function PerformanceChart({ metricKey, label, category, years, va
   const firstVal  = values.find(v => v != null)
   const lastVal   = values[latestIdx]
   const delta     = (firstVal != null && lastVal != null) ? lastVal - firstVal : null
-  const good      = delta === null ? null : (direction === 1 ? delta > 0 : delta < 0)
+  const good      = (direction === 0 || delta === null) ? null : (direction === 1 ? delta > 0 : delta < 0)
   const tCls      = good === null ? 'neu' : good ? 'up' : 'down'
   const lineCol   = good === null ? COL.neu : good ? COL.pos : COL.neg
 

@@ -168,6 +168,7 @@ body {
 .pf-cur { font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.8px;margin-bottom:12px; }
 .pf-cur small { font-size:12px;font-weight:500;color:var(--ink-3);letter-spacing:0; }
 .pf-chart { height:66px;position:relative; }
+.pf-chart canvas { position:absolute;top:0;left:0;width:100%!important;height:100%!important; }
 
 /* ── TABLE ───────────────────────────────────────────────── */
 .tbl-wrap { overflow:hidden;border-radius:var(--r);border:1px solid var(--line); }

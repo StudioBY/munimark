@@ -71,12 +71,21 @@ export default async function MayorPage({ params }: Props) {
   const yearList = years ?? []
   const latestYear = yearList[yearList.length - 1]
 
-  if (!mayor || !latestYear) notFound()
+  // DEBUG: log H-field values from DB
+  console.log('[DEBUG] authority_yearly h-fields for', slug, yearList.map(r => ({
+    year: r.data_year,
+    h_life_expectancy: r.h_life_expectancy,
+    h_ba_degree_pct:   r.h_ba_degree_pct,
+    h_youth_pct:       r.h_youth_pct,
+    h_elderly_pct:     r.h_elderly_pct,
+  })))
+
+  if (!latestYear) notFound()
 
   return (
     <MayorProfile
       authority={authority}
-      mayor={mayor}
+      mayor={mayor ?? null}
       years={yearList}
       latestYear={latestYear}
       score={score ?? null}

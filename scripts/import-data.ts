@@ -98,7 +98,7 @@ async function main() {
         name_cbs:          nameCbs,
         slug,
         entity_id_obudget: conn['entity_id_obudget'] ?? null,
-      }, { onConflict: 'symbol' })
+      }, { onConflict: 'symbol,authority_type' })
       .select('id')
       .single()
 
@@ -184,10 +184,48 @@ async function main() {
           b_edu_invest_per_capita:      num(B['השקעה_חינוך_לנפש']),
           b_welfare_invest_per_capita:  num(B['השקעה_רווחה_לנפש']),
 
-          // D
+          // D (CBS)
           d_accidents_per_1000:  num(D['תאונות_ל_1000']),
           d_sewage_treated_pct:  num(D['אחוז_שפכים_מטופלים']),
           d_water_violations:    num(D['חריגות_מי_שתייה']),
+
+          // H (munidata — Interior Ministry dashboard)
+          h_nafa:                H['נפה'] ?? null,
+          h_profile_group:       H['קבוצת_פרופיל'] ?? null,
+          h_confrontation_line:  H['קו_עימות'] ?? null,
+
+          // D (munidata — demographics)
+          d_natural_increase:       num(D['ריבוי_טבעי']),
+          d_avg_wage:               num(D['שכר_ממוצע']),
+
+          // D (munidata — budget & economy)
+          d_arnona_charge_per_sqm:  num(D['ארנונה_חיוב_למר']),
+          d_arnona_other_share:     num(D['שיעור_ארנונה_אחרת']),
+          d_debt_per_household:     num(D['עומס_חוב_למשק_בית']),
+          d_debt_repayment_rate:    num(D['פרעון_מלוות_שנתי']),
+          d_net_accum_deficit:      num(D['גירעון_מצטבר_נטו']),
+          d_loan_burden_ratio:      num(D['יחס_עומס_מלוות']),
+          d_debt_concentration:     num(D['ריכוז_חוב']),
+          d_municipal_corporations: num(D['תאגידים_עירוניים']),
+          d_audit_deficiencies:     num(D['ליקויי_ביקורת']),
+          d_total_income:           num(D['הכנסות_כוללות']),
+          d_dev_funds_balance:      num(D['קרנות_פיתוח']),
+          d_extraordinary_income:   num(D['תברים_הכנסות']),
+          d_extraordinary_expenses: num(D['תברים_הוצאות']),
+          d_dev_project_funds:      num(D['קרנות_לפרויקטי_פיתוח']),
+
+          // D (munidata — gov mechanisms)
+          d_govt_tenders:           num(D['קולות_קוראים_זכיות']),
+          d_equalization_grants:    num(D['מענקי_איזון']),
+          d_dev_grants:             num(D['מענקי_פיתוח']),
+          d_gap_reduction_fund:     num(D['קרן_צמצום_פערים']),
+          d_regional_services:      num(D['תקציב_שירותים_אזוריות']),
+
+          // D (munidata — human capital)
+          d_cadets:                 num(D['צוערים']),
+          d_ceo_seniority:          num(D['ותק_מנכל']),
+          d_statutory_roles_pct:    num(D['איוש_תפקידים_סטטוטוריים']),
+          d_org_dev_plans:          num(D['תוכניות_פיתוח_ארגוני']),
         }, { onConflict: 'authority_id,data_year' })
 
       if (yearErr) {

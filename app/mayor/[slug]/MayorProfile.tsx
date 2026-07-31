@@ -7,7 +7,7 @@ import type { Authority, Mayor, AuthorityYearly, Score } from '@/types/db'
 
 interface Props {
   authority: Authority
-  mayor: Mayor
+  mayor: Mayor | null
   years: AuthorityYearly[]
   latestYear: AuthorityYearly
   score: Score | null
@@ -39,6 +39,11 @@ function toYearMap(rows: AuthorityYearly[]) {
       מחזור:          r.b_recycling_pct,
       פחת:            r.b_water_loss_pct,
       פסולת:          r.b_waste_per_capita,
+      // H-fields shown in demographics charts
+      תוחלת_חיים:     r.h_life_expectancy,
+      תואר_ראשון:     r.h_ba_degree_pct,
+      צעירים:         r.h_youth_pct,
+      קשישים:         r.h_elderly_pct,
     }
   }
   return m
@@ -60,37 +65,42 @@ const fmt = (v: number | null | undefined, fn: (n: number) => string) =>
   v != null ? fn(v) : '—'
 
 // ── KPI config ────────────────────────────────────────────────────────────────
-const KPIS = [
-  { k: 'זכאות_בגרות', l: 'זכאות בגרות',   dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'נשירה',        l: 'נשירת תלמידים', dir: -1 as 1|-1, fn: f.pct2 },
-  { k: 'מאזן',         l: 'מאזן הגירה',    dir: 1  as 1|-1, fn: f.sign, lead: true },
-  { k: 'התחלות',       l: 'התחלות בנייה',  dir: 1  as 1|-1, fn: f.int  },
-  { k: 'עצמיות',       l: 'הכנסות עצמיות', dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'ארנונה',       l: 'גביית ארנונה',  dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'תקציב_לנפש',  l: 'תקציב לנפש',    dir: 1  as 1|-1, fn: f.ils  },
-  { k: 'מחזור',        l: 'מחזור פסולת',   dir: 1  as 1|-1, fn: f.pct1 },
+const KPIS: { k: string; l: string; dir: 1 | -1 | 0; fn: (v: number) => string; lead?: boolean }[] = [
+  { k: 'זכאות_בגרות', l: 'זכאות בגרות',   dir:  1, fn: f.pct1 },
+  { k: 'נשירה',        l: 'נשירת תלמידים', dir: -1, fn: f.pct2 },
+  { k: 'מאזן',         l: 'מאזן הגירה',    dir:  1, fn: f.sign, lead: true },
+  { k: 'התחלות',       l: 'התחלות בנייה',  dir:  1, fn: f.int  },
+  { k: 'עצמיות',       l: 'הכנסות עצמיות', dir:  1, fn: f.pct1 },
+  { k: 'ארנונה',       l: 'גביית ארנונה',  dir:  1, fn: f.pct1 },
+  { k: 'תקציב_לנפש',  l: 'תקציב לנפש',    dir:  1, fn: f.ils  },
+  { k: 'מחזור',        l: 'מחזור פסולת',   dir:  1, fn: f.pct1 },
 ]
 
-// ── ALL 18 metrics ────────────────────────────────────────────────────────────
-const ALL = [
-  { k: 'זכאות_בגרות', l: 'זכאות בגרות',       cat: 'חינוך',    dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'בגרות_סף',     l: "בגרות סף אוני׳",   cat: 'חינוך',    dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'נשירה',         l: 'נשירה',              cat: 'חינוך',    dir: -1 as 1|-1, fn: f.pct2 },
-  { k: 'תלמידים',       l: 'תלמידים לכיתה',     cat: 'חינוך',    dir: -1 as 1|-1, fn: f.dec1 },
-  { k: 'חינוך_אחוז',   l: "הוצ׳ חינוך",        cat: 'חינוך',    dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'תקציב_לנפש',   l: 'תקציב לנפש',         cat: 'פיננסי',   dir: 1  as 1|-1, fn: f.ils  },
-  { k: 'ארנונה',        l: 'גביית ארנונה',       cat: 'פיננסי',   dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'עצמיות',        l: 'הכנסות עצמיות',      cat: 'פיננסי',   dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'ביצוע',         l: 'ביצוע תקציב',        cat: 'פיננסי',   dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'עודף',          l: 'עודף/גירעון',         cat: 'פיננסי',   dir: 1  as 1|-1, fn: f.sign },
-  { k: 'רווחה_אחוז',   l: "הוצ׳ רווחה",          cat: 'פיננסי',   dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'מאזן',          l: 'מאזן הגירה',           cat: 'דמוגרפיה', dir: 1  as 1|-1, fn: f.sign },
-  { k: 'גידול',         l: 'גידול אוכלוסייה',     cat: 'דמוגרפיה', dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'התחלות',        l: 'התחלות בנייה',         cat: 'בנייה',    dir: 1  as 1|-1, fn: f.int  },
-  { k: 'גמר',           l: 'גמר בנייה',             cat: 'בנייה',    dir: 1  as 1|-1, fn: f.int  },
-  { k: 'מחזור',         l: 'מחזור פסולת',           cat: 'סביבה',    dir: 1  as 1|-1, fn: f.pct1 },
-  { k: 'פחת',           l: 'פחת מים',               cat: 'סביבה',    dir: -1 as 1|-1, fn: f.pct1 },
-  { k: 'פסולת',         l: 'פסולת לנפש',             cat: 'סביבה',    dir: -1 as 1|-1, fn: f.waste },
+// ── ALL 22 metrics (18 performance + 4 demographics) ─────────────────────────
+const ALL: { k: string; l: string; cat: string; dir: 1 | -1 | 0; fn: (v: number) => string }[] = [
+  { k: 'זכאות_בגרות', l: 'זכאות בגרות',       cat: 'חינוך',    dir:  1, fn: f.pct1 },
+  { k: 'בגרות_סף',     l: "בגרות סף אוני׳",   cat: 'חינוך',    dir:  1, fn: f.pct1 },
+  { k: 'נשירה',         l: 'נשירה',              cat: 'חינוך',    dir: -1, fn: f.pct2 },
+  { k: 'תלמידים',       l: 'תלמידים לכיתה',     cat: 'חינוך',    dir: -1, fn: f.dec1 },
+  { k: 'חינוך_אחוז',   l: "הוצ׳ חינוך",        cat: 'חינוך',    dir:  1, fn: f.pct1 },
+  { k: 'תקציב_לנפש',   l: 'תקציב לנפש',         cat: 'פיננסי',   dir:  1, fn: f.ils  },
+  { k: 'ארנונה',        l: 'גביית ארנונה',       cat: 'פיננסי',   dir:  1, fn: f.pct1 },
+  { k: 'עצמיות',        l: 'הכנסות עצמיות',      cat: 'פיננסי',   dir:  1, fn: f.pct1 },
+  { k: 'ביצוע',         l: 'ביצוע תקציב',        cat: 'פיננסי',   dir:  1, fn: f.pct1 },
+  { k: 'עודף',          l: 'עודף/גירעון',         cat: 'פיננסי',   dir:  1, fn: f.sign },
+  { k: 'רווחה_אחוז',   l: "הוצ׳ רווחה",          cat: 'פיננסי',   dir:  1, fn: f.pct1 },
+  { k: 'מאזן',          l: 'מאזן הגירה',           cat: 'דמוגרפיה', dir:  1, fn: f.sign },
+  { k: 'גידול',         l: 'גידול אוכלוסייה',     cat: 'דמוגרפיה', dir:  1, fn: f.pct1 },
+  { k: 'התחלות',        l: 'התחלות בנייה',         cat: 'בנייה',    dir:  1, fn: f.int  },
+  { k: 'גמר',           l: 'גמר בנייה',             cat: 'בנייה',    dir:  1, fn: f.int  },
+  { k: 'מחזור',         l: 'מחזור פסולת',           cat: 'סביבה',    dir:  1, fn: f.pct1 },
+  { k: 'פחת',           l: 'פחת מים',               cat: 'סביבה',    dir: -1, fn: f.pct1 },
+  { k: 'פסולת',         l: 'פסולת לנפש',             cat: 'סביבה',    dir: -1, fn: f.waste },
+  // Demographics (4 new) — H-class fields, shown but not scored
+  { k: 'תוחלת_חיים',   l: 'תוחלת חיים',           cat: 'דמוגרפיה', dir:  1, fn: f.dec1 },
+  { k: 'תואר_ראשון',   l: 'תואר ראשון+',           cat: 'דמוגרפיה', dir:  1, fn: f.pct1 },
+  { k: 'צעירים',        l: 'צעירים 0–17',            cat: 'דמוגרפיה', dir:  0, fn: f.pct1 },
+  { k: 'קשישים',        l: 'קשישים 65+',             cat: 'דמוגרפיה', dir:  0, fn: f.pct1 },
 ]
 
 // ── Sparkline SVG ─────────────────────────────────────────────────────────────
@@ -234,7 +244,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
   const [curY, setCurY]  = useState(lastYr)
   const [view, setView]  = useState<'charts'|'table'>('charts')
 
-  const tenureYear = mayor.tenure_start
+  const tenureYear = mayor?.tenure_start
     ? parseInt(mayor.tenure_start.split('/').pop() ?? '')
     : null
 
@@ -276,7 +286,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
         {/* ── HERO ──────────────────────────────────────────────── */}
         <div className="card hero section">
           {/* Photo */}
-          {mayor.photo_url ? (
+          {mayor?.photo_url ? (
             <img
               className="hero-photo"
               src={mayor.photo_url}
@@ -284,14 +294,16 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               onError={(e) => { (e.target as HTMLImageElement).style.background = '#E5E1D8' }}
             />
           ) : (
-            <div className="hero-photo" style={{ display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,color:'var(--ink-3)' }}>
-              👤
+            <div className="hero-photo" style={{ display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,fontWeight:800,color:'var(--accent)',background:'var(--line-2)' }}>
+              {authority.name_display.charAt(0)}
             </div>
           )}
 
           {/* Name + meta */}
           <div className="hero-main">
-            <div className="hero-name">{mayor.name ?? authority.name_display}</div>
+            <div className="hero-name">
+              {mayor?.name ?? 'פרטי ראש הרשות בקרוב'}
+            </div>
             <div className="hero-city">ראש {latestYear.h_authority_type === 'עירייה' ? 'העירייה' : 'הרשות'}</div>
             <div className="hero-meta">
               {tenureYear && (
@@ -318,7 +330,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
                   <span className="v">{latestYear.h_district}</span>
                 </div>
               )}
-              {mayor.election_pct && (
+              {mayor?.election_pct && (
                 <div className="mi">
                   <span className="l">בבחירות האחרונות</span>
                   <span className="v num">{mayor.election_pct}</span>
@@ -429,7 +441,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               const v    = D[curY]?.[m.k]
               const vals = YRS.map(y => D[y]?.[m.k] ?? null)
               const d    = vals[0] != null && v != null ? v - vals[0] : null
-              const good = d === null ? null : (m.dir === 1 ? d > 0 : d < 0)
+              const good = (m.dir === 0 || d === null) ? null : (m.dir === 1 ? d > 0 : d < 0)
               const tCls = good === null ? 'neu' : good ? 'up' : 'down'
               const col  = m.lead ? COL.brass : (good === null ? COL.neu : good ? COL.pos : COL.neg)
               const dStr = d === null ? '—' :
@@ -492,6 +504,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
             </div>
           </div>
 
+
           {/* Charts view */}
           {view === 'charts' && (
             <div className="perf-grid">
@@ -528,7 +541,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
                     const first = vals.find(v => v != null)
                     const last  = [...vals].reverse().find(v => v != null)
                     const chg   = (first != null && last != null) ? last - first : null
-                    const good  = chg === null ? null : (m.dir === 1 ? chg > 0 : chg < 0)
+                    const good  = (m.dir === 0 || chg === null) ? null : (m.dir === 1 ? chg > 0 : chg < 0)
                     const cls   = chg === null ? 'neu' : good ? 'up' : 'down'
                     const cs    = chg === null ? '—' :
                       (chg > 0 ? '+' : '') + (Math.abs(chg) > 100 ? Math.round(chg).toLocaleString('he-IL')
