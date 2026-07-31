@@ -25,6 +25,7 @@ export interface Mayor {
   youtube_last_video: string | null
   youtube_active: boolean | null
   wikipedia_url: string | null
+  slug: string | null
 }
 
 export interface AuthorityYearly {
@@ -123,6 +124,7 @@ export interface MayorTerm {
     photo_url: string | null
     background: string | null
     wikipedia_url: string | null
+    slug: string | null
   } | null
 }
 

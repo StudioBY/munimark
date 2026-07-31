@@ -288,6 +288,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
     ?? null
   const displayElectionPct = termMayor?.election_pct ?? (isCurrentTerm ? mayor?.election_pct : null) ?? null
   const displayTermBadge = termMayor ? termDisplayLabel(termMayor.term_label) : null
+  const personSlug = termMayor?.person?.slug ?? (isCurrentTerm ? mayor?.slug : null) ?? null
   // Initials from the displayed mayor's name (for placeholder avatar)
   const mayorInitials = displayName.split(/\s+/).map(w => w.charAt(0)).slice(0, 2).join('')
 
@@ -349,7 +350,9 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
           {/* Name + meta */}
           <div className="hero-main">
             <div className="hero-name">
-              {displayName}
+              {personSlug ? (
+                <Link href={`/person/${personSlug}`} className="mayor-person-link">{displayName}</Link>
+              ) : displayName}
               {displayTermBadge && (
                 <span className="term-badge">{displayTermBadge}</span>
               )}

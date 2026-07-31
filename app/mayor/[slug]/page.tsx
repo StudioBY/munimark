@@ -68,7 +68,7 @@ export default async function MayorPage({ params }: Props) {
       .single<Score>(),
     supabase
       .from('mayor_terms')
-      .select('*, mayors(name, photo_url, background, wikipedia_url)')
+      .select('*, mayors(name, photo_url, background, wikipedia_url, slug)')
       .eq('authority_symbol', authority.symbol)
       .eq('authority_type', authority.authority_type ?? '')
       .returns<MayorTerm[]>(),

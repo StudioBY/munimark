@@ -9,6 +9,7 @@ export interface MayorForYear {
     photo_url: string | null
     bio: string | null
     wikipedia_url: string | null
+    slug: string | null
   } | null
 }
 
@@ -40,7 +41,7 @@ export function getMayorForYear(
     election_pct: t.election_pct,
     changed_from_previous: t.changed_from_previous,
     person: t.mayors
-      ? { photo_url: t.mayors.photo_url, bio: t.mayors.background, wikipedia_url: t.mayors.wikipedia_url }
+      ? { photo_url: t.mayors.photo_url, bio: t.mayors.background, wikipedia_url: t.mayors.wikipedia_url, slug: t.mayors.slug }
       : null,
   })
 
