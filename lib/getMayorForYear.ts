@@ -107,6 +107,49 @@ export function getMayorForYear(
 }
 
 /** Map a term_label to a Hebrew display label */
+/**
+ * The years a term RUNS — the election year through the next election.
+ *
+ * Deliberately different from termAttributedYears(), which is the CBS data
+ * window. Municipal elections are held in October, so the year of the election
+ * is mostly served by the outgoing mayor and its data is attributed to them:
+ *
+ *     term_2013   in office 2013-2018      data years 2014-2018
+ *     term_2018   in office 2018-2023      data years 2019-2023
+ *
+ * Both are correct answers to different questions — "when did he serve" and
+ * "which year's numbers are his" — and the interface must not show one where
+ * the reader expects the other. A chart that starts at 2014 under a heading
+ * that says 2013 looks like a missing year rather than a rule.
+ */
+export function termSpanYears(termLabel: string): [number, number | null] {
+  switch (termLabel) {
+    case 'term_2013':             return [2013, 2018]
+    case 'term_2018':             return [2018, 2024]
+    case 'term_2023_special':     return [2023, 2024]
+    case 'term_2023_appointed':   return [2023, 2024]
+    case 'term_2024_regular':     return [2024, null]   // current
+    case 'term_2024_nov':         return [2024, null]
+    case 'term_2025_feb':         return [2025, null]
+    case 'term_2025_replacement': return [2025, null]
+    case 'term_2026_repeat':      return [2026, null]
+    default:                      return [2024, null]
+  }
+}
+
+/** "2013–2018", or "2024 –" while the term is still running. */
+export function termSpanLabel(termLabel: string): string {
+  const [from, to] = termSpanYears(termLabel)
+  return to ? `${from}\u2013${to}` : `${from}\u2013`
+}
+
+/** "קדנציה 3" / "לפחות 3 קדנציות" when the count is a lower bound. */
+export function termCountLabel(count: number | null, isMinimum: boolean): string | null {
+  if (!count) return null
+  const word = count === 1 ? 'קדנציה אחת' : `${count} קדנציות`
+  return isMinimum ? `לפחות ${word}` : word
+}
+
 export function termDisplayLabel(termLabel: string): string {
   const map: Record<string, string> = {
     term_2013: 'קדנציית 2013',

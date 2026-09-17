@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import PerformanceChart from './PerformanceChart'
 import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm } from '@/types/db'
-import { getMayorForYear, termDisplayLabel, layerYearRange, layerRepresentativeYear, authorityTypePrefix } from '@/lib/getMayorForYear'
+import { getMayorForYear, termDisplayLabel, termSpanLabel, layerYearRange, layerRepresentativeYear, authorityTypePrefix } from '@/lib/getMayorForYear'
 import type { MayorForYear } from '@/lib/getMayorForYear'
 
 type Layer = '2013' | '2018' | '2024'
@@ -326,9 +326,13 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
   // Initials from the displayed mayor's name (for placeholder avatar)
   const mayorInitials = displayName.split(/\s+/).map(w => w.charAt(0)).slice(0, 2).join('')
 
+  // tenure_start is stored as either a year or a dd/mm/yyyy date; take the year.
   const tenureYear = mayor?.tenure_start
-    ? parseInt(mayor.tenure_start.split('/').pop() ?? '')
+    ? parseInt(String(mayor.tenure_start).match(/(\d{4})/)?.[1] ?? '')
     : null
+  // TRUE when the person was already serving when our term data begins, so the
+  // term count is a floor rather than a total. Say so instead of implying it.
+  const tenureIsMin = Boolean((mayor as any)?.tenure_is_minimum)
 
   // Ribbon calculations
   const migFirst = D[firstYr]?.['מאזן']
@@ -387,8 +391,13 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               {personSlug ? (
                 <Link href={`/person/${personSlug}`} className="mayor-person-link">{displayName}</Link>
               ) : displayName}
-              {displayTermBadge && (
-                <span className="term-badge">{displayTermBadge}</span>
+              {termMayor && (
+                // The term's OWN years, not the data window. The chart below
+                // starts a year later for a term won in October, and the two
+                // numbers sitting side by side would otherwise read as an error.
+                <span className="term-badge" title={displayTermBadge ?? undefined}>
+                  קדנציה {termSpanLabel(termMayor.term_label)}
+                </span>
               )}
             </div>
             <div className="hero-city">ראש {authority.authority_type === 'עירייה' ? 'העירייה' : authority.authority_type === 'מועצה מקומית' ? 'המועצה המקומית' : 'המועצה האזורית'}</div>
@@ -396,7 +405,9 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               {tenureYear && (
                 <div className="mi">
                   <span className="l">כהונה</span>
-                  <span className="v ac">מ־{tenureYear}</span>
+                  <span className="v ac">
+                    {tenureIsMin && !((mayor as any)?.tenure_source ?? '').startsWith('mixed') ? 'מ־' + tenureYear + ' לפחות' : 'מ־' + tenureYear}
+                  </span>
                 </div>
               )}
               {latestYear.h_socio_cluster && (

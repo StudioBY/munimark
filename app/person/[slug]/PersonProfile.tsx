@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import PerformanceChart from '@/app/mayor/[slug]/PerformanceChart'
 import type { Authority, Mayor, AuthorityYearly, MayorTerm } from '@/types/db'
-import { termDisplayLabel, termAttributedYears, authorityTypePrefix } from '@/lib/getMayorForYear'
+import { termDisplayLabel, termSpanLabel, termSpanYears, termCountLabel, termAttributedYears, authorityTypePrefix } from '@/lib/getMayorForYear'
 
 interface Props {
   person: Mayor
@@ -83,6 +83,19 @@ const ALL: { k: string; l: string; cat: string; dir: 1 | -1 | 0; fn: (v: number)
 ]
 
 // ── Term ordering ────────────────────────────────────────────────────────────
+// A break in service, decided by YEARS rather than by position in TERM_ORDER.
+// That array interleaves off-cycle terms (term_2023_special, term_2024_nov …),
+// so an ordinary 2018 → 2024 succession sits two slots apart and an index test
+// reports a gap that never happened — the page then showed רון חולדאי, who has
+// served continuously since 1998, as having stepped away.
+// A term continues the previous one when the previous one ran up to its start.
+function isBreakInService(prev: MayorTerm | undefined, curr: MayorTerm): boolean {
+  if (!prev) return false
+  const prevEnd = termSpanYears(prev.term_label)[1]
+  if (prevEnd === null) return false            // previous term still running
+  return prevEnd < termSpanYears(curr.term_label)[0]
+}
+
 const TERM_ORDER = [
   'term_2013', 'term_2018', 'term_2023_special',
   'term_2024_regular', 'term_2024_nov', 'term_2025_feb',
@@ -177,6 +190,15 @@ export default function PersonProfile({ person, terms, authorities, years: allYe
 
   const initials = (person.name ?? '').split(/\s+/).map(w => w.charAt(0)).slice(0, 2).join('')
 
+  // tenure_start is stored as a year or a dd/mm/yyyy date; take the year.
+  const tenureYear = person.tenure_start
+    ? parseInt(String(person.tenure_start).match(/(\d{4})/)?.[1] ?? '')
+    : null
+  // TRUE when they were already serving when mayor_terms begins, so the term
+  // count is a floor. Rendered as "לפחות" rather than asserted as a total.
+  const tenureIsMin = Boolean(person.tenure_is_minimum)
+  const termsLabel = termCountLabel(person.term_count ?? null, tenureIsMin)
+
   return (
     <>
       <nav className="mm-nav">
@@ -208,6 +230,25 @@ export default function PersonProfile({ person, terms, authorities, years: allYe
             <div className="hero-name">{person.name ?? 'ראש רשות'}</div>
             <div className="hero-city">{roleLabel}</div>
             <div className="hero-meta">
+              {/* Tenure belongs to the PERSON, not to the authority: the city
+                  page answers how the city is doing, this one answers who has
+                  been running it and for how long. */}
+              {tenureYear && (
+                <div className="mi">
+                  <span className="l">כהונה</span>
+                  <span className="v ac">
+                    {tenureIsMin && !(person.tenure_source ?? '').startsWith('mixed')
+                      ? `מ־${tenureYear} לפחות`
+                      : `מ־${tenureYear}`}
+                  </span>
+                </div>
+              )}
+              {termsLabel && (
+                <div className="mi">
+                  <span className="l">ותק</span>
+                  <span className="v">{termsLabel}</span>
+                </div>
+              )}
               {person.background && (
                 <div className="mi person-bio">
                   <span className="v">{person.background.slice(0, 300)}{person.background.length > 300 ? '...' : ''}</span>
@@ -247,12 +288,13 @@ export default function PersonProfile({ person, terms, authorities, years: allYe
             {sortedTerms.map((t, i) => {
               const auth = authMap.get(`${t.authority_symbol}|${t.authority_type}`) ?? authBySymbol.get(t.authority_symbol)
               const prev = sortedTerms[i - 1]
-              const hasGap = prev && TERM_ORDER.indexOf(t.term_label) - TERM_ORDER.indexOf(prev.term_label) > 1
+              const hasGap = isBreakInService(prev, t)
               return (
                 <span key={t.id}>
                   {hasGap && <span className="term-gap">···</span>}
                   <span className={`term-badge${t.is_current ? ' term-badge-current' : ''}`}>
-                    {termDisplayLabel(t.term_label)}
+                    {/* the years in office, not the data window */}
+                    {termSpanLabel(t.term_label)}
                     {auth && <span className="term-auth"> · {auth.name_display}</span>}
                   </span>
                 </span>
@@ -321,7 +363,7 @@ export default function PersonProfile({ person, terms, authorities, years: allYe
         {/* ── PERFORMANCE — one section per term ───────────────── */}
         {termGroups.map((g, gi) => {
           const prevGroup = termGroups[gi - 1]
-          const hasGap = prevGroup && TERM_ORDER.indexOf(g.term.term_label) - TERM_ORDER.indexOf(prevGroup.term.term_label) > 1
+          const hasGap = isBreakInService(prevGroup?.term, g.term)
           const [lo, hi] = g.yearRange
           const rangeLabel = hi >= 2030 ? `${lo}–היום` : `${lo}–${hi}`
 
@@ -331,9 +373,12 @@ export default function PersonProfile({ person, terms, authorities, years: allYe
               <div className="section">
                 <div className="sec-header">
                   <div className="sec-title">
-                    {termDisplayLabel(g.term.term_label)}
+                    קדנציה {termSpanLabel(g.term.term_label)}
                     {g.auth && <span className="term-section-auth"> · {g.auth.name_display}</span>}
-                    <small>{rangeLabel} · 18 מדדים</small>
+                    {/* Elections are in October, so a term won in 2013 owns the
+                        data from 2014 on. Naming both, and saying which is
+                        which, stops the offset looking like a missing year. */}
+                    <small>נתונים {rangeLabel} · 18 מדדים</small>
                   </div>
                   {g.withData.length > 0 && (
                     <div className="view-toggle">

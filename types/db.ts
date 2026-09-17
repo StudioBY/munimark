@@ -33,6 +33,9 @@ export interface Mayor {
   // added by migration 006 (person model)
   is_current: boolean
   term_label: string | null
+  // migration 010 — a derived tenure that states its own limits
+  tenure_is_minimum: boolean | null
+  tenure_source: string | null
   source: string | null
   enrichment_status: 'name_only' | 'partial' | 'complete' | null
 }
