@@ -77,6 +77,11 @@ export default async function HomePage() {
           </div>
         )}
       </main>
+
+      <footer className="max-w-4xl mx-auto px-4 pb-10 text-xs text-gray-400 leading-relaxed">
+        המקור: נתוני הלשכה המרכזית לסטטיסטיקה ומשרד הפנים · עיבוד Munimark ·{' '}
+        <Link href="/credits" className="underline hover:text-gray-600">קרדיטים ורישיונות</Link>
+      </footer>
     </div>
   )
 }

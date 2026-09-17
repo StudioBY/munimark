@@ -758,7 +758,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
       </div>
 
       <footer className="mm-footer">
-        המקור: נתוני הלשכה המרכזית לסטטיסטיקה ומשרד הפנים · עיבוד Munimark · הערכים מוצגים לצורכי השוואה ואינם מהווים המלצה. הציון הכולל יחושב עם הרחבת מאגר הרשויות.
+        המקור: נתוני הלשכה המרכזית לסטטיסטיקה ומשרד הפנים · עיבוד Munimark · הערכים מוצגים לצורכי השוואה ואינם מהווים המלצה. הציון הכולל יחושב עם הרחבת מאגר הרשויות. · <Link href="/credits" style={{ color: 'var(--ink-2)', textDecoration: 'underline' }}>קרדיטים ורישיונות</Link>
       </footer>
     </>
   )
