@@ -35,7 +35,11 @@ CREATE TABLE IF NOT EXISTS mayor_terms (
 
 -- ─── CBS Year Attribution Rules ─────────────────────────────
 -- Standard terms:
---   term_2013        → CBS years 2013-2018 (until next election)
+--   REVISED 2026-09-16 — see _shared/terms_years_muni_israel.csv, the single
+--   source of truth. A CBS year belongs to the mayor who served through it, so
+--   attribution starts the year AFTER the October election.
+--   term_2013        → CBS years 2014-2018   (was written 2013-2018, which
+--                      contradicted the rule applied to term_2018)
 --   term_2018        → CBS years 2019-2023
 --   term_2024_regular → CBS year 2024+
 --   term_2024_nov    → CBS year 2024 stays with term_2018 mayor

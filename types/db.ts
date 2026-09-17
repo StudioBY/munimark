@@ -7,6 +7,10 @@ export interface Authority {
   entity_id_obudget: string | null
   authority_type: string | null
   is_published: boolean
+  // migration 007 — the authority did not exist before this year, so earlier
+  // rows are legitimately empty and must not be charted as zero coverage.
+  established_year: number | null
+  established_note: string | null
 }
 
 export interface Mayor {
@@ -26,6 +30,11 @@ export interface Mayor {
   youtube_active: boolean | null
   wikipedia_url: string | null
   slug: string | null
+  // added by migration 006 (person model)
+  is_current: boolean
+  term_label: string | null
+  source: string | null
+  enrichment_status: 'name_only' | 'partial' | 'complete' | null
 }
 
 export interface AuthorityYearly {
@@ -103,6 +112,22 @@ export interface AuthorityYearly {
   d_ceo_seniority: number | null
   d_statutory_roles_pct: number | null
   d_org_dev_plans: number | null
+  // ── migration 008 (munidata v2) ──
+  // Interior Ministry measures kept DELIBERATELY separate from their CBS
+  // equivalents. population/migration/housing starts have CBS counterparts
+  // above; merging them would destroy the cross-check that caught the
+  // thousands trap. 2,300 overlapping years agree to a median 0.0000%.
+  d_population_moi: number | null          // 2002-2025
+  d_migration_moi: number | null           // 2014-2024
+  d_housing_starts_moi: number | null      // 2002-2024 (units, not area)
+  d_self_income_share_moi: number | null
+  d_arnona_collection_moi: number | null
+  d_current_deficit_moi: number | null
+  d_edu_subsidy_moi: number | null
+  d_welfare_subsidy_moi: number | null
+  d_deficit_auth_share_moi: number | null
+  d_unbudgeted_funds: number | null        // 2020-2024
+  d_hr_manager_gap: number | null          // 2025
 }
 
 export interface MayorTerm {

@@ -51,8 +51,11 @@ export default async function MayorPage({ params }: Props) {
     supabase
       .from('mayors')
       .select('*')
+      // migration 006 turned `mayors` into a person table: an authority can
+      // now hold historical mayors too, so .single() needs the current one.
       .eq('authority_id', authority.id)
-      .single<Mayor>(),
+      .eq('is_current', true)
+      .maybeSingle<Mayor>(),
     supabase
       .from('authority_yearly')
       .select('*')

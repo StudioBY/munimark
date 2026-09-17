@@ -98,7 +98,26 @@ interface TermGroup {
   withData: number[]    // subset of years that have non-null metric values
 }
 
-export default function PersonProfile({ person, terms, authorities, years }: Props) {
+// Same rule as the authority page: a year earns a place only if it carries at
+// least one of the 18 B metrics. Rows exist for 2025-2026 holding nothing but a
+// few municipal-data.org dimension fields, and for years before an authority
+// was established — both render as a flat empty run that looks like measured
+// zero rather than absent data.
+const B_COLUMNS = [
+  'b_bagrut_pct', 'b_bagrut_uni_pct', 'b_dropout_pct', 'b_students_per_class',
+  'b_edu_spend_pct', 'b_welfare_spend_pct', 'b_budget_per_capita',
+  'b_arnona_collection_pct', 'b_own_revenue_pct', 'b_budget_execution_pct',
+  'b_surplus_deficit', 'b_migration_balance', 'b_population_growth_pct',
+  'b_construction_starts', 'b_construction_completions', 'b_recycling_pct',
+  'b_water_loss_pct', 'b_waste_per_capita',
+] as const
+
+function hasPerformanceData(row: AuthorityYearly): boolean {
+  return B_COLUMNS.some(c => (row as unknown as Record<string, unknown>)[c] != null)
+}
+
+export default function PersonProfile({ person, terms, authorities, years: allYears }: Props) {
+  const years = allYears.filter(hasPerformanceData)
   const authMap = new Map(authorities.map(a => [`${a.symbol}|${a.authority_type}`, a]))
   const authBySymbol = new Map(authorities.map(a => [a.symbol, a]))
 

@@ -238,3 +238,6 @@ tbody tr:hover { background:var(--surface-2); }
   .section:nth-child(5) { animation-delay: .16s; }
   .section:nth-child(6) { animation-delay: .20s; }
 }
+
+/* sub-line under an empty-state message, e.g. "the authority did not exist yet" */
+.ndp-sub { margin-top: .35rem; font-size: .8rem; opacity: .65; }

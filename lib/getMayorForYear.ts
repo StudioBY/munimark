@@ -124,23 +124,28 @@ export function termDisplayLabel(termLabel: string): string {
 /** Map a layer id to the year range it covers */
 export function layerYearRange(layer: '2013' | '2018' | '2024'): [number, number] {
   switch (layer) {
-    case '2013': return [2013, 2018]
+    case '2013': return [2014, 2018]
     case '2018': return [2019, 2023]
-    case '2024': return [2024, 2030]
+    case '2024': return [2024, 2028]
   }
 }
 
 /** Map a term_label to its attributed CBS data year range */
+// Ranges below mirror _shared/terms_years_muni_israel.csv, which is the single
+// source of truth. A CBS year belongs to the mayor who served THROUGH it, so
+// attribution starts the year AFTER the October election — term_2013 is
+// 2014-2018, not 2013-2018, matching the way term_2018 is 2019-2023.
+// Settled with the user 2026-09-16; do not change one copy without the other.
 export function termAttributedYears(termLabel: string): [number, number] {
   switch (termLabel) {
-    case 'term_2013':             return [2013, 2018]
+    case 'term_2013':             return [2014, 2018]
     case 'term_2018':             return [2019, 2023]
     case 'term_2023_special':     return [2023, 2025]
-    case 'term_2024_regular':     return [2024, 2026]
-    case 'term_2024_nov':         return [2025, 2026]
-    case 'term_2025_feb':         return [2025, 2026]
-    case 'term_2025_replacement': return [2026, 2030]
-    case 'term_2026_repeat':      return [2026, 2030]
+    case 'term_2024_regular':     return [2024, 2028]
+    case 'term_2024_nov':         return [2025, 2029]
+    case 'term_2025_feb':         return [2025, 2029]
+    case 'term_2025_replacement': return [2026, 2028]
+    case 'term_2026_repeat':      return [2026, 2028]
     default:                      return [2024, 2030]
   }
 }

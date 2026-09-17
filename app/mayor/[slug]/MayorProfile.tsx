@@ -54,6 +54,21 @@ function toYearMap(rows: AuthorityYearly[]) {
   return m
 }
 
+// A year is worth showing only if it carries at least one of the 18 B metrics.
+// H fields alone (district, נפה, קבוצת_פרופיל) describe the authority, not a year.
+const B_COLUMNS = [
+  'b_bagrut_pct', 'b_bagrut_uni_pct', 'b_dropout_pct', 'b_students_per_class',
+  'b_edu_spend_pct', 'b_welfare_spend_pct', 'b_budget_per_capita',
+  'b_arnona_collection_pct', 'b_own_revenue_pct', 'b_budget_execution_pct',
+  'b_surplus_deficit', 'b_migration_balance', 'b_population_growth_pct',
+  'b_construction_starts', 'b_construction_completions', 'b_recycling_pct',
+  'b_water_loss_pct', 'b_waste_per_capita',
+] as const
+
+function hasPerformanceData(row: AuthorityYearly): boolean {
+  return B_COLUMNS.some(c => (row as unknown as Record<string, unknown>)[c] != null)
+}
+
 // ── Formatters ────────────────────────────────────────────────────────────────
 const f = {
   pct1:  (v: number) => v.toFixed(1) + '%',
@@ -240,7 +255,23 @@ function HeroRing({ score, maxScore }: { score: number | null, maxScore: number 
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function MayorProfile({ authority, mayor, years, latestYear, score, mayorTerms }: Props) {
-  const sortedYears = [...years].sort((a, b) => a.data_year - b.data_year)
+  // Two kinds of row carry no performance data and must not be charted:
+  //
+  //   Before the authority existed. migration 007 records when it started;
+  //     צור הדסה was split off in 2023, so 2019-2022 are empty by definition.
+  //   After the last CBS publication. Rows exist for 2025 and 2026 because
+  //     municipal-data.org publishes a few dimension fields that far out, but
+  //     they hold no B metric — every authority was drawing two blank years
+  //     onto the front of its current term.
+  //
+  // Both look identical on a chart: a flat empty run that reads as measured
+  // zero. Filter on the presence of an actual measurement instead of on the
+  // existence of a row.
+  const born = authority.established_year ?? null
+  const sortedYears = [...years]
+    .filter(y => born == null || y.data_year >= born)
+    .filter(hasPerformanceData)
+    .sort((a, b) => a.data_year - b.data_year)
   const allYRS = sortedYears.map(y => y.data_year)
   const D = toYearMap(sortedYears)
 
@@ -248,6 +279,9 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
   const [layer, setLayer] = useState<Layer>('2024')
   const [range] = [layerYearRange(layer)]
   const YRS = allYRS.filter(y => y >= range[0] && y <= range[1])
+  // The whole selected term predates the authority — say so rather than
+  // showing the generic "data coming soon", which implies a gap we will fill.
+  const bornAfterLayer = born != null && born > range[1]
   const firstYr = YRS[0] ?? allYRS[0]
   const lastYr  = YRS[YRS.length - 1] ?? allYRS[allYRS.length - 1]
 
@@ -543,7 +577,8 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
             </div>
           ) : (
             <div className="no-data-placeholder">
-              <p>נתוני ביצוע יתווספו</p>
+              <p>{bornAfterLayer ? `הרשות הוקמה בשנת ${born}` : 'נתוני ביצוע יתווספו'}</p>
+              {bornAfterLayer && <p className="ndp-sub">אין נתונים לתקופה זו משום שהרשות טרם התקיימה</p>}
             </div>
           )}
         </div>
@@ -554,7 +589,10 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
           <div className="sec-header">
             <div className="sec-title">
               ביצועים לאורך הקדנציה
-              <small>סדרות שנתיות {firstYr}–{lastYr} · 18 מדדים</small>
+              <small>
+                סדרות שנתיות {firstYr}–{lastYr} · 18 מדדים
+                {born != null && born > range[0] && ` · הרשות הוקמה ב-${born}`}
+              </small>
             </div>
             <div className="view-toggle">
               <button className={`vbtn${view === 'charts' ? ' active' : ''}`} onClick={() => setView('charts')}>גרפים</button>
@@ -643,7 +681,8 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
           )}
           </>) : (
             <div className="no-data-placeholder">
-              <p>נתוני ביצוע יתווספו</p>
+              <p>{bornAfterLayer ? `הרשות הוקמה בשנת ${born}` : 'נתוני ביצוע יתווספו'}</p>
+              {bornAfterLayer && <p className="ndp-sub">אין נתונים לתקופה זו משום שהרשות טרם התקיימה</p>}
             </div>
           )}
         </div>
