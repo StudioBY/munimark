@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import JsonLd from '@/lib/JsonLd'
 import { SITE_DESCRIPTION, pageMetadata, websiteJsonLd } from '@/lib/seo'
+import AuthorityDirectory, { type DirectoryRow } from './AuthorityDirectory'
 
 export const revalidate = 3600
 
@@ -18,7 +19,7 @@ export default async function HomePage() {
     .from('authorities')
     .select(`
       id, slug, name_display,
-      mayors(name, photo_url),
+      mayors(name, photo_url, is_current),
       authority_yearly(h_authority_type, h_district, data_year)
     `)
     .order('name_display')
@@ -43,47 +44,7 @@ export default async function HomePage() {
             </code>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {authorities.map((auth: any) => {
-              const mayor = Array.isArray(auth.mayors) ? auth.mayors[0] : auth.mayors
-              const latestYearData = (auth.authority_yearly as any[])
-                ?.sort((a: any, b: any) => b.data_year - a.data_year)[0]
-
-              return (
-                <Link
-                  key={auth.slug}
-                  href={`/mayor/${auth.slug}`}
-                  className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all p-4 flex gap-4 items-center"
-                >
-                  {mayor?.photo_url ? (
-                    <img
-                      src={mayor.photo_url}
-                      alt={mayor.name ?? ''}
-                      className="w-14 h-14 rounded-xl object-cover bg-gray-100 flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center text-2xl flex-shrink-0">👤</div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-gray-900 truncate">{auth.name_display}</div>
-                    <div className="text-sm text-gray-500 truncate">{mayor?.name ?? '—'}</div>
-                    <div className="flex gap-2 mt-1.5 flex-wrap">
-                      {latestYearData?.h_authority_type && (
-                        <span className="text-[11px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">
-                          {latestYearData.h_authority_type}
-                        </span>
-                      )}
-                      {latestYearData?.h_district && (
-                        <span className="text-[11px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded">
-                          {latestYearData.h_district}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+          <AuthorityDirectory rows={authorities.map(toDirectoryRow)} />
         )}
       </main>
 
@@ -93,4 +54,32 @@ export default async function HomePage() {
       </footer>
     </div>
   )
+}
+
+type AuthorityQueryRow = {
+  slug: string
+  name_display: string
+  mayors: { name: string | null; photo_url: string | null; is_current: boolean }[] | null
+  authority_yearly: { h_authority_type: string | null; h_district: string | null; data_year: number }[] | null
+}
+
+function toDirectoryRow(auth: AuthorityQueryRow): DirectoryRow {
+  // Since migration 006 an authority can hold former heads too; the card and
+  // the search are about the one serving now. No current head -> none shown.
+  const mayor = (auth.mayors ?? []).find(m => m.is_current) ?? null
+
+  // Type and district from the LATEST year that records them: six authorities
+  // were upgraded from local council to city inside the data window, so an
+  // earlier year would file them under the wrong type.
+  const years = [...(auth.authority_yearly ?? [])].sort((a, b) => b.data_year - a.data_year)
+  const latest = (key: 'h_authority_type' | 'h_district') => years.find(y => y[key])?.[key] ?? null
+
+  return {
+    slug: auth.slug,
+    name: auth.name_display,
+    mayorName: mayor?.name ?? null,
+    mayorPhoto: mayor?.photo_url ?? null,
+    authorityType: latest('h_authority_type'),
+    district: latest('h_district'),
+  }
 }

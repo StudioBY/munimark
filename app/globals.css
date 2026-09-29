@@ -26,7 +26,13 @@
   --rs: 10px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* In the base layer, not unlayered: unlayered CSS outranks every Tailwind
+   utility, so this reset was silently zeroing all p-* / m-* classes on the
+   Tailwind-styled home page. The design-system classes are unlayered and
+   still override it exactly as before. */
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+}
 html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 
 body {
