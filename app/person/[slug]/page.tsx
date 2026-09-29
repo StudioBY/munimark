@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Mayor, AuthorityYearly, MayorTerm, Authority } from '@/types/db'
 import PersonProfile from './PersonProfile'
+import JsonLd from '@/lib/JsonLd'
+import { pageMetadata, personDescription, personJsonLd } from '@/lib/seo'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -14,16 +16,33 @@ export async function generateMetadata({ params }: Props) {
 
   const { data: person } = await supabase
     .from('mayors')
-    .select('name')
+    .select('*')
     .eq('slug', slug)
-    .single()
+    .single<Mayor>()
 
   if (!person) return { title: 'Munimark' }
 
-  return {
+  // The description names the posts held, from mayor_terms, so it needs the
+  // terms and the authorities they point to — the same lookup as the page.
+  const { data: terms } = await supabase
+    .from('mayor_terms')
+    .select('authority_symbol, authority_type, term_label, is_current')
+    .eq('mayor_id', person.id)
+  const symbols = [...new Set((terms ?? []).map(t => t.authority_symbol))]
+  const { data: authorities } = symbols.length
+    ? await supabase
+        .from('authorities')
+        .select('symbol, authority_type, name_display, slug')
+        .in('symbol', symbols)
+    : { data: [] }
+
+  return pageMetadata({
     title: `${person.name} | Munimark`,
-    description: `פרופיל אישי — ${person.name}`,
-  }
+    description: personDescription({ person, terms: terms ?? [], authorities: authorities ?? [] }),
+    path: `/person/${slug}`,
+    image: person.photo_url,
+    type: 'profile',
+  })
 }
 
 export async function generateStaticParams() {
@@ -90,11 +109,14 @@ export default async function PersonPage({ params }: Props) {
   }
 
   return (
-    <PersonProfile
-      person={person}
-      terms={termList}
-      authorities={authorities}
-      years={allYears}
-    />
+    <>
+      <JsonLd data={personJsonLd({ person, terms: termList, authorities })} />
+      <PersonProfile
+        person={person}
+        terms={termList}
+        authorities={authorities}
+        years={allYears}
+      />
+    </>
   )
 }
