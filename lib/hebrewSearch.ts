@@ -47,9 +47,20 @@ function skeleton(word: string): string {
   return word.charAt(0) + word.slice(1).replace(/[יו]/g, '')
 }
 
-// A skeleton shorter than this is too loose to mean anything: "רום" (skeleton
-// "רמ") would find every name starting with רמ.
-const SKELETON_MIN = 3
+// How short a skeleton may be before it stops meaning anything. Measured
+// against all 257 authorities rather than chosen: for every name containing an
+// internal yod or vav, drop one of them — the realistic defective spelling —
+// and see whether the name is still found.
+//
+//   MIN=3   173/194 found   'אבו' returns 14
+//   MIN=2   194/194 found   'אבו' returns 25
+//
+// 2 wins. The 21 it recovers are whole names a person would plausibly type —
+// לד for לוד, בת שמש for בית שמש, הד השרון for הוד השרון, אם אל-פחם —
+// and the extra results land only on prefixes that already return a list,
+// where a reader is scanning anyway. 1 is not an option: a single letter
+// would skeleton-match most of the country.
+const SKELETON_MIN = 2
 
 function wordMatches(word: string, token: string): boolean {
   if (word.startsWith(token)) return true
