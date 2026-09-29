@@ -17,7 +17,7 @@ export interface MayorForYear {
  * Resolve which mayor term applies for a given CBS data year.
  *
  * Term attribution logic (data-driven — no hardcoded city names):
- *   year 2013-2018 → term_2013
+ *   year 2014-2018 → term_2013   (2013 belongs to the 2008 term, absent here)
  *   year 2019-2023 → term_2018 (unless term_2023_special exists → use it from 2023+)
  *   year 2024-2025 → term_2024_regular if it exists;
  *     BUT if the authority's latest election is term_2024_nov or term_2025_feb,
@@ -97,8 +97,13 @@ export function getMayorForYear(
     return t2018 ? toResult(t2018) : null
   }
 
-  // ── Year 2013-2018 ──
-  if (year >= 2013) {
+  // ── Year 2014-2018 → term_2013 ──
+  // 2014, not 2013. Elections are held in October, so a data year belongs to
+  // whoever served THROUGH it: 2013 was served by the mayor elected in 2008,
+  // who is not in our data at all. Returning term_2013 for 2013 credited a
+  // whole year to someone who took office in its final weeks.
+  // In practice our CBS data starts at 2014, so nothing is lost by refusing.
+  if (year >= 2014) {
     const t2013 = byLabel('term_2013')
     return t2013 ? toResult(t2013) : null
   }
@@ -197,7 +202,10 @@ export function termAttributedYears(termLabel: string): [number, number] {
 export function authorityTypePrefix(authorityType: string | null): string {
   if (authorityType === 'עירייה') return 'עיריית'
   if (authorityType === 'מועצה מקומית') return 'מ. מקומית'
-  return 'מ. אזורית'
+  if (authorityType === 'מועצה אזורית') return 'מ. אזורית'
+  // An unknown or missing type is not a regional council. Saying nothing is
+  // the only honest answer: hard rule 1, no field is filled with a guess.
+  return ''
 }
 
 /** Map a layer id to the term_label used to find the representative mayor */
