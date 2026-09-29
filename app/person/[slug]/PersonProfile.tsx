@@ -210,9 +210,9 @@ export default function PersonProfile({ person, terms, authorities, years: allYe
           Munimark
         </div>
         <div className="nav-links">
-          <a href="#">השוואה</a>
-          <a href="#">מתודולוגיה</a>
-          <a href="#">אודות</a>
+          {/* Only links that lead somewhere. Methodology and About will be
+              added when their content is written, not as placeholders. */}
+          <Link href="/credits">קרדיטים</Link>
         </div>
       </nav>
 
