@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { indexProvenance, type ProvenanceRow } from '@/lib/provenance'
 import JsonLd from '@/lib/JsonLd'
 import { datasetJsonLd, pageMetadata } from '@/lib/seo'
 
@@ -13,6 +14,7 @@ export const metadata = pageMetadata({
 })
 
 type Row = {
+  id: number
   name: string | null
   slug: string | null
   photo_url: string | null
@@ -38,10 +40,21 @@ const SOURCE_LABEL: Record<string, string> = {
 
 export default async function CreditsPage() {
   const supabase = await createClient()
+
+  // Provenance now lives in its own table (migration 011). The legacy columns
+  // are still selected below and still used as a fallback, so this page is
+  // correct whether or not that migration has run — and a failed query here
+  // must not blank the credits, which is a licence obligation, not a feature.
+  const { data: provRows } = await supabase
+    .from('asset_provenance')
+    .select('entity_type, entity_id, field, source, license, license_url, attribution, source_page')
+    .eq('entity_type', 'mayor')
+  const prov = indexProvenance(provRows as ProvenanceRow[] | null)
+
   const { data } = await supabase
     .from('mayors')
     .select(
-      'name, slug, photo_url, photo_artist, photo_license, photo_license_url, ' +
+      'id, name, slug, photo_url, photo_artist, photo_license, photo_license_url, ' +
         'photo_file_page, photo_source, background, background_source_url, ' +
         'background_license, wikipedia_url, authorities(name_display, slug)'
     )
@@ -59,6 +72,8 @@ export default async function CreditsPage() {
   const rows = ((data ?? []) as unknown as Row[]).map(r => ({
     ...r,
     authority: Array.isArray(r.authorities) ? r.authorities[0] : r.authorities,
+    photo: prov.get('mayor', r, 'photo_url'),
+    text: prov.get('mayor', r, 'background'),
   }))
 
   const photos = rows
@@ -67,17 +82,17 @@ export default async function CreditsPage() {
       (a.authority?.name_display ?? '').localeCompare(b.authority?.name_display ?? '', 'he')
     )
   const texts = rows
-    .filter(r => r.background && r.background_source_url)
+    .filter(r => r.background && r.text.source_page)
     .sort((a, b) =>
       (a.authority?.name_display ?? '').localeCompare(b.authority?.name_display ?? '', 'he')
     )
 
   // Photos with no licence on record are listed too, openly. A public site that
   // cannot say where an image came from should say that, not stay silent.
-  const unattributed = photos.filter(p => !p.photo_license)
+  const unattributed = photos.filter(p => !p.photo.license)
 
   const byLicence = photos.reduce<Record<string, number>>((acc, p) => {
-    const k = p.photo_license ?? 'ללא רישיון מתועד'
+    const k = p.photo.license ?? 'ללא רישיון מתועד'
     acc[k] = (acc[k] ?? 0) + 1
     return acc
   }, {})
@@ -185,37 +200,37 @@ export default async function CreditsPage() {
                         p.name
                       )}
                     </Td>
-                    <Td muted>{p.photo_artist ?? '—'}</Td>
+                    <Td muted>{p.photo.attribution ?? '—'}</Td>
                     <Td>
-                      {p.photo_license ? (
-                        p.photo_license_url ? (
+                      {p.photo.license ? (
+                        p.photo.license_url ? (
                           <a
-                            href={p.photo_license_url}
+                            href={p.photo.license_url}
                             target="_blank"
                             rel="noopener noreferrer license"
                             style={{ color: 'var(--accent)' }}
                           >
-                            {p.photo_license}
+                            {p.photo.license}
                           </a>
                         ) : (
-                          p.photo_license
+                          p.photo.license
                         )
                       ) : (
                         <span style={{ color: 'var(--neg)' }}>לא מתועד</span>
                       )}
                     </Td>
                     <Td muted>
-                      {p.photo_file_page ? (
+                      {p.photo.source_page ? (
                         <a
-                          href={p.photo_file_page}
+                          href={p.photo.source_page}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ color: 'var(--accent)' }}
                         >
-                          {SOURCE_LABEL[p.photo_source ?? ''] ?? 'דף הקובץ'}
+                          {SOURCE_LABEL[p.photo.source ?? ''] ?? 'דף הקובץ'}
                         </a>
                       ) : (
-                        SOURCE_LABEL[p.photo_source ?? ''] ?? '—'
+                        SOURCE_LABEL[p.photo.source ?? ''] ?? '—'
                       )}
                     </Td>
                   </tr>
@@ -267,10 +282,10 @@ export default async function CreditsPage() {
                         t.name
                       )}
                     </Td>
-                    <Td muted>{t.background_license ?? 'CC BY-SA'}</Td>
+                    <Td muted>{t.text.license ?? 'CC BY-SA'}</Td>
                     <Td>
                       <a
-                        href={t.background_source_url!}
+                        href={t.text.source_page!}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: 'var(--accent)' }}
