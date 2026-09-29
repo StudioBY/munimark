@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm } from '@/types/db'
 import MayorProfile from './MayorProfile'
+import JsonLd from '@/lib/JsonLd'
+import { B_COLUMNS, authorityDescription, authorityJsonLd, pageMetadata } from '@/lib/seo'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -14,16 +16,46 @@ export async function generateMetadata({ params }: Props) {
 
   const { data: auth } = await supabase
     .from('authorities')
-    .select('name_display')
+    .select('id, name_display')
     .eq('slug', slug)
     .single()
 
   if (!auth) return { title: 'Munimark' }
 
-  return {
+  // Only what the description states: the current head's name, how many of
+  // the 18 metrics this authority has data for, over which years, and whether
+  // a peer comparison exists. All counted from the rows, per authority.
+  const [{ data: mayor }, { data: years }, { data: score }] = await Promise.all([
+    supabase
+      .from('mayors')
+      .select('name')
+      .eq('authority_id', auth.id)
+      .eq('is_current', true)
+      .maybeSingle(),
+    supabase
+      .from('authority_yearly')
+      .select(['data_year', ...B_COLUMNS].join(', '))
+      .eq('authority_id', auth.id)
+      .returns<Pick<AuthorityYearly, 'data_year' | (typeof B_COLUMNS)[number]>[]>(),
+    supabase
+      .from('scores')
+      .select('comparison_group, solo_group, group_size')
+      .eq('authority_id', auth.id)
+      .order('data_year', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  return pageMetadata({
     title: `${auth.name_display} | Munimark`,
-    description: `פרופיל ביצועים של ראש הרשות — ${auth.name_display}`,
-  }
+    description: authorityDescription({
+      authority: auth,
+      mayorName: mayor?.name ?? null,
+      years: years ?? [],
+      score: score ?? null,
+    }),
+    path: `/mayor/${slug}`,
+  })
 }
 
 export async function generateStaticParams() {
@@ -92,13 +124,23 @@ export default async function MayorPage({ params }: Props) {
   if (!latestYear) notFound()
 
   return (
-    <MayorProfile
-      authority={authority}
-      mayor={mayor ?? null}
-      years={yearList}
-      latestYear={latestYear}
-      score={score ?? null}
-      mayorTerms={mayorTerms ?? []}
-    />
+    <>
+      <JsonLd
+        data={authorityJsonLd({
+          authority,
+          // Latest year that records a district — the newest row may predate its import.
+          district: [...yearList].reverse().find(r => r.h_district)?.h_district ?? null,
+          mayor: mayor ?? null,
+        })}
+      />
+      <MayorProfile
+        authority={authority}
+        mayor={mayor ?? null}
+        years={yearList}
+        latestYear={latestYear}
+        score={score ?? null}
+        mayorTerms={mayorTerms ?? []}
+      />
+    </>
   )
 }

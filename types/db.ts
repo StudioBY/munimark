@@ -38,6 +38,15 @@ export interface Mayor {
   tenure_source: string | null
   source: string | null
   enrichment_status: 'name_only' | 'partial' | 'complete' | null
+  // migration 009 — attribution for the photo and the background text
+  photo_source: string | null
+  photo_license: string | null
+  photo_license_url: string | null
+  photo_artist: string | null
+  photo_file_page: string | null
+  background_source: string | null
+  background_source_url: string | null
+  background_license: string | null
 }
 
 export interface AuthorityYearly {

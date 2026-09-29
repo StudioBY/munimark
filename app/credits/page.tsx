@@ -1,13 +1,16 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import JsonLd from '@/lib/JsonLd'
+import { datasetJsonLd, pageMetadata } from '@/lib/seo'
 
 export const revalidate = 86400
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: 'קרדיטים ורישיונות | Munimark',
   description:
     'מקור ורישיון לכל תמונה ולכל טקסט ביוגרפי המוצגים ב-Munimark, לפי אדם, יוצר ורישיון.',
-}
+  path: '/credits',
+})
 
 type Row = {
   name: string | null
@@ -45,6 +48,14 @@ export default async function CreditsPage() {
     .eq('is_current', true)
     .order('name')
 
+  // The Dataset description states the coverage the tables actually hold:
+  // how many authorities, and the first and last data year.
+  const [{ count: authorityCount }, { data: firstRow }, { data: lastRow }] = await Promise.all([
+    supabase.from('authorities').select('id', { count: 'exact', head: true }),
+    supabase.from('authority_yearly').select('data_year').order('data_year', { ascending: true }).limit(1).maybeSingle(),
+    supabase.from('authority_yearly').select('data_year').order('data_year', { ascending: false }).limit(1).maybeSingle(),
+  ])
+
   const rows = ((data ?? []) as unknown as Row[]).map(r => ({
     ...r,
     authority: Array.isArray(r.authorities) ? r.authorities[0] : r.authorities,
@@ -73,6 +84,13 @@ export default async function CreditsPage() {
 
   return (
     <div dir="rtl">
+      <JsonLd
+        data={datasetJsonLd({
+          authorityCount: authorityCount ?? null,
+          firstYear: firstRow?.data_year ?? null,
+          lastYear: lastRow?.data_year ?? null,
+        })}
+      />
       <nav className="mm-nav">
         <Link className="nav-back" href="/">→ כל הרשויות</Link>
         <div className="mm-logo">

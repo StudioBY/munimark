@@ -1,7 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import JsonLd from '@/lib/JsonLd'
+import { SITE_DESCRIPTION, pageMetadata, websiteJsonLd } from '@/lib/seo'
 
 export const revalidate = 3600
+
+export const metadata = pageMetadata({
+  title: 'Munimark — דירוג ראשי רשויות',
+  description: SITE_DESCRIPTION,
+  path: '/',
+})
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -17,6 +25,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
+      <JsonLd data={websiteJsonLd()} />
       <header className="bg-white border-b border-gray-200 px-6 py-5">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-black text-gray-900">Munimark</h1>
