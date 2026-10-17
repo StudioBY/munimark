@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm } from '@/types/db'
+import type { AuthorityYearly } from '@/types/db'
+import { loadAuthority } from '@/lib/loadAuthority'
 import MayorProfile from './MayorProfile'
 import JsonLd from '@/lib/JsonLd'
 import { B_COLUMNS, authorityDescription, authorityJsonLd, pageMetadata } from '@/lib/seo'
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: Props) {
       .returns<Pick<AuthorityYearly, 'data_year' | (typeof B_COLUMNS)[number]>[]>(),
     supabase
       .from('scores')
-      .select('comparison_group, solo_group, group_size')
+      .select('comparison_group, group_size')
       .eq('authority_id', auth.id)
       .order('data_year', { ascending: false })
       .limit(1)
@@ -69,57 +70,10 @@ export async function generateStaticParams() {
 
 export default async function MayorPage({ params }: Props) {
   const { slug } = await params
-  const supabase = await createClient()
-
-  const { data: authority } = await supabase
-    .from('authorities')
-    .select('*')
-    .eq('slug', slug)
-    .single<Authority>()
-
-  if (!authority) notFound()
-
-  const [{ data: mayor }, { data: years }, { data: score }, { data: mayorTerms }] = await Promise.all([
-    supabase
-      .from('mayors')
-      .select('*')
-      // migration 006 turned `mayors` into a person table: an authority can
-      // now hold historical mayors too, so .single() needs the current one.
-      .eq('authority_id', authority.id)
-      .eq('is_current', true)
-      .maybeSingle<Mayor>(),
-    supabase
-      .from('authority_yearly')
-      .select('*')
-      .eq('authority_id', authority.id)
-      .order('data_year', { ascending: true })
-      .returns<AuthorityYearly[]>(),
-    supabase
-      .from('scores')
-      .select('*')
-      .eq('authority_id', authority.id)
-      .order('data_year', { ascending: false })
-      .limit(1)
-      .single<Score>(),
-    supabase
-      .from('mayor_terms')
-      .select('*, mayors(name, photo_url, background, wikipedia_url, slug)')
-      .eq('authority_symbol', authority.symbol)
-      .eq('authority_type', authority.authority_type ?? '')
-      .returns<MayorTerm[]>(),
-  ])
-
-  const yearList = years ?? []
+  const data = await loadAuthority(slug)
+  if (!data) notFound()
+  const { authority, mayor, years: yearList, scores, anchors, cfg, mayorTerms } = data
   const latestYear = yearList[yearList.length - 1]
-
-  // DEBUG: log H-field values from DB
-  console.log('[DEBUG] authority_yearly h-fields for', slug, yearList.map(r => ({
-    year: r.data_year,
-    h_life_expectancy: r.h_life_expectancy,
-    h_ba_degree_pct:   r.h_ba_degree_pct,
-    h_youth_pct:       r.h_youth_pct,
-    h_elderly_pct:     r.h_elderly_pct,
-  })))
 
   if (!latestYear) notFound()
 
@@ -130,16 +84,18 @@ export default async function MayorPage({ params }: Props) {
           authority,
           // Latest year that records a district — the newest row may predate its import.
           district: [...yearList].reverse().find(r => r.h_district)?.h_district ?? null,
-          mayor: mayor ?? null,
+          mayor,
         })}
       />
       <MayorProfile
         authority={authority}
-        mayor={mayor ?? null}
+        mayor={mayor}
         years={yearList}
         latestYear={latestYear}
-        score={score ?? null}
-        mayorTerms={mayorTerms ?? []}
+        scores={scores}
+        anchors={anchors}
+        scoringConfig={cfg}
+        mayorTerms={mayorTerms}
       />
     </>
   )

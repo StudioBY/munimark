@@ -162,8 +162,8 @@ describe('authorityDescription', () => {
   })
 
   it('claims a peer comparison only when one was computed against peers', () => {
-    const peers = { comparison_group: 'x', solo_group: false, group_size: 12 }
-    const solo = { comparison_group: 'x', solo_group: true, group_size: 1 }
+    const peers = { comparison_group: 'x', group_size: 12 }
+    const solo = { comparison_group: 'x', group_size: 1 }
     expect(authorityDescription({ authority: ashdod, mayorName: null, years, score: peers })).toContain('מול רשויות דומות')
     expect(authorityDescription({ authority: ashdod, mayorName: null, years, score: solo })).not.toContain('מול רשויות דומות')
     expect(authorityDescription({ authority: ashdod, mayorName: null, years, score: null })).not.toContain('מול רשויות דומות')

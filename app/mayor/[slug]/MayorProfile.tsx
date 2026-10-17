@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import PerformanceChart from './PerformanceChart'
-import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm } from '@/types/db'
+import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm, ScoringAnchor, ScoringConfig } from '@/types/db'
+import ScoreSection, { BandBadge, threeYearSpan } from './ScoreSection'
+import { toYearMap, hasPerformanceData, fmt, KPIS, ALL } from '@/lib/authorityMetrics'
 import { getMayorForYear, termDisplayLabel, termSpanLabel, layerYearRange, layerRepresentativeYear, authorityTypePrefix } from '@/lib/getMayorForYear'
 import type { MayorForYear } from '@/lib/getMayorForYear'
 
@@ -14,114 +16,14 @@ interface Props {
   mayor: Mayor | null
   years: AuthorityYearly[]
   latestYear: AuthorityYearly
-  score: Score | null
+  scores: Score[]
+  anchors: ScoringAnchor[]
+  scoringConfig: ScoringConfig | null
   mayorTerms: MayorTerm[]
 }
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 const COL = { pos: '#2F7152', neg: '#B0432F', neu: '#928C81', accent: '#1E3A5F', brass: '#9A6F25' }
-
-// ── Data mapping (DB column → display key) ────────────────────────────────────
-function toYearMap(rows: AuthorityYearly[]) {
-  const m: Record<number, Record<string, number | null>> = {}
-  for (const r of rows) {
-    m[r.data_year] = {
-      זכאות_בגרות:    r.b_bagrut_pct,
-      בגרות_סף:       r.b_bagrut_uni_pct,
-      נשירה:          r.b_dropout_pct,
-      תלמידים:        r.b_students_per_class,
-      חינוך_אחוז:     r.b_edu_spend_pct,
-      רווחה_אחוז:     r.b_welfare_spend_pct,
-      תקציב_לנפש:     r.b_budget_per_capita,
-      ארנונה:          r.b_arnona_collection_pct,
-      עצמיות:         r.b_own_revenue_pct,
-      ביצוע:          r.b_budget_execution_pct,
-      עודף:           r.b_surplus_deficit,
-      מאזן:           r.b_migration_balance,
-      גידול:          r.b_population_growth_pct,
-      התחלות:         r.b_construction_starts,
-      גמר:            r.b_construction_completions,
-      מחזור:          r.b_recycling_pct,
-      פחת:            r.b_water_loss_pct,
-      פסולת:          r.b_waste_per_capita,
-      // H-fields shown in demographics charts
-      תוחלת_חיים:     r.h_life_expectancy,
-      תואר_ראשון:     r.h_ba_degree_pct,
-      צעירים:         r.h_youth_pct,
-      קשישים:         r.h_elderly_pct,
-    }
-  }
-  return m
-}
-
-// A year is worth showing only if it carries at least one of the 18 B metrics.
-// H fields alone (district, נפה, קבוצת_פרופיל) describe the authority, not a year.
-const B_COLUMNS = [
-  'b_bagrut_pct', 'b_bagrut_uni_pct', 'b_dropout_pct', 'b_students_per_class',
-  'b_edu_spend_pct', 'b_welfare_spend_pct', 'b_budget_per_capita',
-  'b_arnona_collection_pct', 'b_own_revenue_pct', 'b_budget_execution_pct',
-  'b_surplus_deficit', 'b_migration_balance', 'b_population_growth_pct',
-  'b_construction_starts', 'b_construction_completions', 'b_recycling_pct',
-  'b_water_loss_pct', 'b_waste_per_capita',
-] as const
-
-function hasPerformanceData(row: AuthorityYearly): boolean {
-  return B_COLUMNS.some(c => (row as unknown as Record<string, unknown>)[c] != null)
-}
-
-// ── Formatters ────────────────────────────────────────────────────────────────
-const f = {
-  pct1:  (v: number) => v.toFixed(1) + '%',
-  pct2:  (v: number) => v.toFixed(2) + '%',
-  dec1:  (v: number) => v.toFixed(1),
-  dec2:  (v: number) => v.toFixed(2),
-  ils:   (v: number) => '₪' + Math.round(v).toLocaleString('he-IL'),
-  int:   (v: number) => Math.round(v).toLocaleString('he-IL'),
-  sign:  (v: number) => (v > 0 ? '+' : '') + Math.round(v).toLocaleString('he-IL'),
-  waste: (v: number) => v.toFixed(2) + ' ק"ג',
-}
-
-const fmt = (v: number | null | undefined, fn: (n: number) => string) =>
-  v != null ? fn(v) : '—'
-
-// ── KPI config ────────────────────────────────────────────────────────────────
-const KPIS: { k: string; l: string; dir: 1 | -1 | 0; fn: (v: number) => string; lead?: boolean }[] = [
-  { k: 'זכאות_בגרות', l: 'זכאות בגרות',   dir:  1, fn: f.pct1 },
-  { k: 'נשירה',        l: 'נשירת תלמידים', dir: -1, fn: f.pct2 },
-  { k: 'מאזן',         l: 'מאזן הגירה',    dir:  1, fn: f.sign, lead: true },
-  { k: 'התחלות',       l: 'התחלות בנייה',  dir:  1, fn: f.int  },
-  { k: 'עצמיות',       l: 'הכנסות עצמיות', dir:  1, fn: f.pct1 },
-  { k: 'ארנונה',       l: 'גביית ארנונה',  dir:  1, fn: f.pct1 },
-  { k: 'תקציב_לנפש',  l: 'תקציב לנפש',    dir:  1, fn: f.ils  },
-  { k: 'מחזור',        l: 'מחזור פסולת',   dir:  1, fn: f.pct1 },
-]
-
-// ── ALL 22 metrics (18 performance + 4 demographics) ─────────────────────────
-const ALL: { k: string; l: string; cat: string; dir: 1 | -1 | 0; fn: (v: number) => string }[] = [
-  { k: 'זכאות_בגרות', l: 'זכאות בגרות',       cat: 'חינוך',    dir:  1, fn: f.pct1 },
-  { k: 'בגרות_סף',     l: "בגרות סף אוני׳",   cat: 'חינוך',    dir:  1, fn: f.pct1 },
-  { k: 'נשירה',         l: 'נשירה',              cat: 'חינוך',    dir: -1, fn: f.pct2 },
-  { k: 'תלמידים',       l: 'תלמידים לכיתה',     cat: 'חינוך',    dir: -1, fn: f.dec1 },
-  { k: 'חינוך_אחוז',   l: "הוצ׳ חינוך",        cat: 'חינוך',    dir:  1, fn: f.pct1 },
-  { k: 'תקציב_לנפש',   l: 'תקציב לנפש',         cat: 'פיננסי',   dir:  1, fn: f.ils  },
-  { k: 'ארנונה',        l: 'גביית ארנונה',       cat: 'פיננסי',   dir:  1, fn: f.pct1 },
-  { k: 'עצמיות',        l: 'הכנסות עצמיות',      cat: 'פיננסי',   dir:  1, fn: f.pct1 },
-  { k: 'ביצוע',         l: 'ביצוע תקציב',        cat: 'פיננסי',   dir:  1, fn: f.pct1 },
-  { k: 'עודף',          l: 'עודף/גירעון',         cat: 'פיננסי',   dir:  1, fn: f.sign },
-  { k: 'רווחה_אחוז',   l: "הוצ׳ רווחה",          cat: 'פיננסי',   dir:  1, fn: f.pct1 },
-  { k: 'מאזן',          l: 'מאזן הגירה',           cat: 'דמוגרפיה', dir:  1, fn: f.sign },
-  { k: 'גידול',         l: 'גידול אוכלוסייה',     cat: 'דמוגרפיה', dir:  1, fn: f.pct1 },
-  { k: 'התחלות',        l: 'התחלות בנייה',         cat: 'בנייה',    dir:  1, fn: f.int  },
-  { k: 'גמר',           l: 'גמר בנייה',             cat: 'בנייה',    dir:  1, fn: f.int  },
-  { k: 'מחזור',         l: 'מחזור פסולת',           cat: 'סביבה',    dir:  1, fn: f.pct1 },
-  { k: 'פחת',           l: 'פחת מים',               cat: 'סביבה',    dir: -1, fn: f.pct1 },
-  { k: 'פסולת',         l: 'פסולת לנפש',             cat: 'סביבה',    dir: -1, fn: f.waste },
-  // Demographics (4 new) — H-class fields, shown but not scored
-  { k: 'תוחלת_חיים',   l: 'תוחלת חיים',           cat: 'דמוגרפיה', dir:  1, fn: f.dec1 },
-  { k: 'תואר_ראשון',   l: 'תואר ראשון+',           cat: 'דמוגרפיה', dir:  1, fn: f.pct1 },
-  { k: 'צעירים',        l: 'צעירים 0–17',            cat: 'דמוגרפיה', dir:  0, fn: f.pct1 },
-  { k: 'קשישים',        l: 'קשישים 65+',             cat: 'דמוגרפיה', dir:  0, fn: f.pct1 },
-]
 
 // ── Sparkline SVG ─────────────────────────────────────────────────────────────
 function SparkSVG({ vals, color, highlightIdx }: { vals: (number|null)[], color: string, highlightIdx: number }) {
@@ -160,101 +62,9 @@ function SparkSVG({ vals, color, highlightIdx }: { vals: (number|null)[], color:
   )
 }
 
-// ── Rank Ring ─────────────────────────────────────────────────────────────────
-function RankRing({ pct, color, pending, children }: {
-  pct: number, color: string, pending?: boolean, children: React.ReactNode
-}) {
-  const arcRef = useRef<SVGCircleElement>(null)
-  const size = 64, sw = 5, r = (size - sw) / 2, circ = 2 * Math.PI * r
-  const target = circ * (1 - pct / 100)
-
-  useEffect(() => {
-    if (pending || !arcRef.current) return
-    const el = arcRef.current
-    el.style.strokeDashoffset = String(circ)
-    const dur = 950
-    let start: number | null = null
-    const step = (ts: number) => {
-      if (!start) start = ts
-      const p = Math.min((ts - start) / dur, 1)
-      const e = 1 - Math.pow(1 - p, 3)
-      el.style.strokeDashoffset = String(circ - (circ - target) * e)
-      if (p < 1) requestAnimationFrame(step)
-    }
-    const raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [pct, circ, target, pending])
-
-  return (
-    <div className="rank-ring">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {pending ? (
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--line)" strokeWidth={sw} strokeDasharray="3 5"/>
-        ) : (
-          <>
-            <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--line-2)" strokeWidth={sw}/>
-            <circle ref={arcRef} cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={sw}
-              strokeDasharray={circ} strokeDashoffset={circ} strokeLinecap="round"
-              transform={`rotate(-90 ${size/2} ${size/2})`}
-            />
-          </>
-        )}
-      </svg>
-      <div className="rank-ring-center">{children}</div>
-    </div>
-  )
-}
-
-// ── Hero score ring ───────────────────────────────────────────────────────────
-function HeroRing({ score, maxScore }: { score: number | null, maxScore: number | null }) {
-  const arcRef = useRef<SVGCircleElement>(null)
-  const size = 96, sw = 6, r = (size - sw) / 2, circ = 2 * Math.PI * r
-  const pct = (score != null && maxScore) ? score / maxScore : 0
-  const target = circ * (1 - pct)
-  const hasScore = score != null && maxScore != null
-
-  useEffect(() => {
-    if (!hasScore || !arcRef.current) return
-    const el = arcRef.current
-    el.style.strokeDashoffset = String(circ)
-    const dur = 1100
-    let start: number | null = null
-    const step = (ts: number) => {
-      if (!start) start = ts
-      const p = Math.min((ts - start) / dur, 1)
-      const e = 1 - Math.pow(1 - p, 3)
-      el.style.strokeDashoffset = String(circ - (circ - target) * e)
-      if (p < 1) requestAnimationFrame(step)
-    }
-    const raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [circ, target, hasScore])
-
-  return (
-    <div className="ring-wrap">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {!hasScore ? (
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--line)" strokeWidth={sw} strokeDasharray="3 5"/>
-        ) : (
-          <>
-            <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--line)" strokeWidth={sw} strokeDasharray="3 5"/>
-            <circle ref={arcRef} cx={size/2} cy={size/2} r={r} fill="none" stroke={COL.accent} strokeWidth={sw}
-              strokeDasharray={String(circ)} strokeDashoffset={String(circ)} strokeLinecap="round"
-              transform={`rotate(-90 ${size/2} ${size/2})`}
-            />
-          </>
-        )}
-      </svg>
-      <div className="ring-center">
-        <div className="ring-num num">{hasScore ? score : '—'}</div>
-        <div className="ring-sub">ציון כולל</div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
-export default function MayorProfile({ authority, mayor, years, latestYear, score, mayorTerms }: Props) {
+export default function MayorProfile({ authority, mayor, years, latestYear, scores, anchors, scoringConfig, mayorTerms }: Props) {
+  const latestScore = scores.length ? scores[scores.length - 1] : null
   // Two kinds of row carry no performance data and must not be charted:
   //
   //   Before the authority existed. migration 007 records when it started;
@@ -402,7 +212,9 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
             </div>
             <div className="hero-city">ראש {authority.authority_type === 'עירייה' ? 'העירייה' : authority.authority_type === 'מועצה מקומית' ? 'המועצה המקומית' : 'המועצה האזורית'}</div>
             <div className="hero-meta">
-              {tenureYear && (
+              {/* tenure belongs to the CURRENT head; under a past term it would sit
+                  under another person's name (Yeruham: Tal Ohana shown "מ־2024"). */}
+              {tenureYear && isCurrentTerm && (
                 <div className="mi">
                   <span className="l">כהונה</span>
                   <span className="v ac">
@@ -448,74 +260,18 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
             </div>
           </div>
 
-          {/* Score ring */}
+          {/* Band badge */}
           <div className="hero-score">
-            <HeroRing score={score?.score ?? null} maxScore={score?.max_score ?? null} />
-            <div className="hero-score-label">{score ? `ציון ${score.data_year}` : 'טרם חושב'}</div>
+            <BandBadge score={latestScore} />
+            <div className="hero-score-label">
+              {latestScore?.band ? `דרגה ${latestScore.band}` : 'אין ציון'}
+            </div>
             <div className="hero-score-note">
-              {score
-                ? `${score.score}/${score.max_score} מדדים`
-                : 'יעודכן עם\nהרחבת המאגר'}
+              {latestScore
+                ? `מדד ניהול וביצועים\nממוצע ${threeYearSpan(latestScore)}`
+                : 'אין קבוצת השוואה'}
             </div>
           </div>
-        </div>
-
-        {/* ── RANKINGS ──────────────────────────────────────────── */}
-        <div className="rank-grid section">
-
-          {/* Comparison group card */}
-          <div className="card rank-card">
-            <RankRing pct={score ? 80 : 0} color={COL.accent} pending={!score}>
-              <div className="rank-num" style={{ color: COL.accent }}>
-                {score ? '1' : '—'}
-              </div>
-              <div className="rank-of">
-                {score ? `מתוך ${score.group_size ?? '—'}` : 'ממתין'}
-              </div>
-            </RankRing>
-            <div>
-              <div className="eyebrow rank-title">קבוצת השוואה</div>
-              <div className="rank-desc">
-                {authority.authority_type ?? latestYear.h_authority_type} · אשכול {latestYear.h_socio_cluster}
-              </div>
-              <div className="rank-meta">
-                {score?.comparison_group ?? 'טרם חושב'}
-              </div>
-              <span className={`rank-flag ${score ? 'good' : 'mid'}`}>
-                <span className="dot" />
-                {score ? 'ציון חושב' : 'ממתין להשלמת הנתונים'}
-              </span>
-            </div>
-          </div>
-
-          {/* Cluster card */}
-          <div className="card rank-card">
-            <RankRing pct={0} color={COL.neu} pending>
-              <div className="rank-num" style={{ color: 'var(--ink-3)' }}>—</div>
-              <div className="rank-of">מתוך ?</div>
-            </RankRing>
-            <div>
-              <div className="eyebrow rank-title">דירוג באשכול {latestYear.h_socio_cluster}</div>
-              <div className="rank-desc">כל גדלי הרשויות</div>
-              <div className="rank-meta">255 רשויות בישראל</div>
-              <span className="rank-flag mid"><span className="dot" />ממתין להרחבת המאגר</span>
-            </div>
-          </div>
-
-          {/* National card */}
-          <div className="card rank-card">
-            <RankRing pct={0} color={COL.neu} pending>
-              <div className="rank-num" style={{ color: 'var(--ink-3)' }}>—</div>
-              <div className="rank-of">מתוך 82</div>
-            </RankRing>
-            <div>
-              <div className="eyebrow rank-title">דירוג ארצי</div>
-              <div className="rank-desc">בין כל העיריות</div>
-              <div className="rank-meta">82 עיריות בישראל</div>
-              <span className="rank-flag mid"><span className="dot" />ממתין להשלמת הנתונים</span>
-            </div>
-          </div>
-
         </div>
 
         {/* ── Layer selector (term switcher) ─────────────────── */}
@@ -533,6 +289,25 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
               ))}
             </div>
           </div>
+        </div>
+
+        {/* ── SCORE ───────────────────────────────────────────── */}
+        <div className="section">
+          <div className="sec-header">
+            <div className="sec-title">
+              מדד ניהול וביצועים
+              <small>ציון מוחלט 0–100 מול רשויות דומות · אינו אחוזון ואינו דירוג</small>
+            </div>
+          </div>
+          <ScoreSection
+            scores={scores}
+            anchors={anchors}
+            cfg={scoringConfig}
+            years={sortedYears}
+            window={range}
+            termName={layer === '2024' ? `הקדנציה הנוכחית (נתוני ${range[0]} ואילך)` : `קדנציית ${layer} (נתוני ${range[0]}–${range[1]})`}
+            focusYear={curY ?? null}
+          />
         </div>
 
         {/* ── KPIs ──────────────────────────────────────────────── */}
@@ -769,7 +544,7 @@ export default function MayorProfile({ authority, mayor, years, latestYear, scor
       </div>
 
       <footer className="mm-footer">
-        המקור: נתוני הלשכה המרכזית לסטטיסטיקה ומשרד הפנים · עיבוד Munimark · הערכים מוצגים לצורכי השוואה ואינם מהווים המלצה. הציון הכולל יחושב עם הרחבת מאגר הרשויות. · <Link href="/credits" style={{ color: 'var(--ink-2)', textDecoration: 'underline' }}>קרדיטים ורישיונות</Link>
+        המקור: נתוני הלשכה המרכזית לסטטיסטיקה ומשרד הפנים · עיבוד Munimark · הערכים מוצגים לצורכי השוואה ואינם מהווים המלצה. הציון מחושב מול עוגנים מוקפאים של קבוצת ההשוואה ואינו דירוג כולל של ראש הרשות. · <Link href="/credits" style={{ color: 'var(--ink-2)', textDecoration: 'underline' }}>קרדיטים ורישיונות</Link>
       </footer>
     </>
   )

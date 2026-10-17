@@ -125,7 +125,7 @@ export function authorityDescription(opts: {
   authority: Pick<Authority, 'name_display'>
   mayorName: string | null
   years: BRow[]
-  score: Pick<Score, 'comparison_group' | 'solo_group' | 'group_size'> | null
+  score: Pick<Score, 'comparison_group' | 'group_size'> | null
 }): string {
   const { authority, mayorName, years, score } = opts
   const head = mayorName ? `${authority.name_display} — ${mayorName}.` : `${authority.name_display}.`
@@ -137,7 +137,7 @@ export function authorityDescription(opts: {
   const metrics = cov.metrics === 1 ? 'מדד ביצוע אחד' : `${cov.metrics} מדדי ביצוע`
   // Only claim a peer comparison when one was actually computed against peers.
   const peers =
-    score?.comparison_group && !score.solo_group && (score.group_size ?? 0) > 1
+    score?.comparison_group && (score.group_size ?? 0) > 1
       ? ', מול רשויות דומות'
       : ''
   return `${head} ${metrics}, ${span}${peers}.`

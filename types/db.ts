@@ -165,15 +165,48 @@ export interface MayorTerm {
   } | null
 }
 
+// migrations 012 + 013 — the frozen scoring model, methodology v1-2026-10-11
 export interface Score {
   id: number
   authority_id: number
   data_year: number
-  comparison_group: string
-  score: number | null
-  max_score: number | null
+  score: number | null          // this year alone, 0-100, absolute (not a percentile)
+  band: 'A' | 'B' | 'C' | 'D' | null   // set from score_3yr, with hysteresis
+  band_natural: 'A' | 'B' | 'C' | 'D' | null
+  score_3yr: number | null
+  years_in_mean: number | null
+  comparison_group: string      // "<authority type>|<socio cluster>"
   group_size: number | null
-  solo_group: boolean
+  domain_education: number | null
+  domain_finance: number | null
+  domain_welfare: number | null // always null in v1: no welfare outcome data
+  domain_environment: number | null
+  domain_growth: number | null
+  metrics_used: number | null
+  metrics_possible: number | null
+  methodology_version: string
+}
+
+export interface ScoringAnchor {
+  comparison_group: string
+  field: string
+  data_year: number | null
+  low: number                   // p10, in the better-is-higher sense
+  high: number                  // p90
+  n_observations: number
+  direction: 'higher_better' | 'lower_better' | 'close_to_100'
+}
+
+export interface ScoringConfig {
+  methodology_version: string
+  cut_d_c: number
+  cut_c_b: number
+  cut_b_a: number
+  domains: Record<string, string[]>
+  monetary_fields: string[]
+  hysteresis_pts: number | null
+  rolling_years: number | null
+  scope_note: string | null
 }
 
 export interface MayorPageData {
