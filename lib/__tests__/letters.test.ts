@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { letterFor, bandCuts, heldReason, termSummary, metricBreakdown, termGrade, aStreak, metricSeries } from '../score'
+import { letterFor, bandCuts, heldReason, termSummary, metricBreakdown, termGrade, aStreak, metricSeries, surplusShare, metricScore } from '../score'
 import type { Score, ScoringAnchor, AuthorityYearly } from '@/types/db'
 
 // The v2 config as frozen on 2026-10-29.
@@ -146,5 +146,23 @@ describe('metricSeries', () => {
     expect(s.band).toEqual({ worse: 1.0, better: 0.4 })
     expect(s.points[1]).toEqual({ year: 2024, value: null, letter: null })
     expect(s.higherBetter).toBe(false)
+  })
+})
+
+describe('v2.1 surplus: a share of the budget, scored in tiers', () => {
+  const a = { low: -0.1, high: 4.867, direction: 'balance_tiers' as const }   // עירייה|8
+  it('the share: thousands of ₪ over ₪ budget', () => {
+    // Modiin 2023: 773 thousand ₪ over 8,803 ₪ × 97,565 residents ≈ 0.09%
+    expect(surplusShare({ b_surplus_deficit: 773, b_budget_per_capita: 8803, h_population: 97565 })).toBeCloseTo(0.09, 2)
+    expect(surplusShare({ b_surplus_deficit: 773, b_budget_per_capita: null, h_population: 97565 })).toBeNull()
+  })
+  it('deficit below balanced, balanced a B, a large surplus an A', () => {
+    expect(metricScore(-0.05, a)).toBeCloseTo(27.5)
+    expect(metricScore(-0.0001, a)!).toBeLessThan(55.1)
+    expect(metricScore(0, a)).toBe(60)
+    expect(metricScore(0.5, a)).toBe(75)
+    expect(metricScore(4.74, a)!).toBeGreaterThan(99)
+    expect(letterFor(metricScore(0.09, a)!, METRIC_CUTS)).toBe('B')
+    expect(letterFor(metricScore(-0.05, a)!, METRIC_CUTS)).toBe('C')
   })
 })

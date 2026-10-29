@@ -8,9 +8,9 @@ import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm, ScoringAnchor
 export const ACTIVE_METHOD = 'v1-2026-10-11'
 // The letter grades. The draft authority page shows these; the mayor page
 // stays on ACTIVE_METHOD until it has a letter layout too.
-export const LETTERS_METHOD = 'v2-2026-10-29'
-// v2 re-uses v1's metric layer: its 0-100 metric scores come from v1's anchors.
-const ANCHORS_OF: Record<string, string> = { [LETTERS_METHOD]: ACTIVE_METHOD }
+export const LETTERS_METHOD = 'v2.1-2026-10-29'
+// v2 re-used v1's anchors; v2.1 has its own (v1's, with the surplus share).
+const ANCHORS_OF: Record<string, string> = { 'v2-2026-10-29': ACTIVE_METHOD }
 
 export interface AuthorityPageData {
   authority: Authority

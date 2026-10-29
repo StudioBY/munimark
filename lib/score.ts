@@ -35,8 +35,10 @@ const dec1: Fmt = v => v.toFixed(1)
 const int: Fmt = v => Math.round(v).toLocaleString('he-IL')
 const sign: Fmt = v => (v > 0 ? '+' : '') + Math.round(v).toLocaleString('he-IL')
 const kg: Fmt = v => v.toFixed(2) + ' ק"ג'
+const signPct2: Fmt = v => (v > 0 ? '+' : '') + v.toFixed(2) + '%'
 
-export const METRICS: Record<string, { col: keyof AuthorityYearly; label: string; fmt: Fmt }> = {
+// `get` derives a value that is not a column. The same formula as the scorer's.
+export const METRICS: Record<string, { col: keyof AuthorityYearly; label: string; fmt: Fmt; get?: (r: AuthorityYearly) => number | null }> = {
   'זכאות_בגרות':          { col: 'b_bagrut_pct',              label: 'זכאות לבגרות',          fmt: pct1 },
   'בגרות_סף_אוניברסיטאי': { col: 'b_bagrut_uni_pct',          label: 'בגרות ברמת סף אוני׳',   fmt: pct1 },
   'נשירה':                { col: 'b_dropout_pct',             label: 'נשירת תלמידים',         fmt: pct2 },
@@ -45,6 +47,8 @@ export const METRICS: Record<string, { col: keyof AuthorityYearly; label: string
   'ביצוע_תקציב_אחוז':     { col: 'b_budget_execution_pct',    label: 'ביצוע תקציב',           fmt: pct1 },
   'הכנסות_עצמיות_אחוז':   { col: 'b_own_revenue_pct',         label: 'הכנסות עצמיות',         fmt: pct1 },
   'עודף_גירעון':          { col: 'b_surplus_deficit',         label: 'עודף / גירעון',         fmt: sign },
+  // v2.1: the surplus as a share of the regular budget (thousands of ₪ over ₪)
+  'עודף_גירעון_אחוז':     { col: 'b_surplus_deficit',         label: 'עודף / גירעון',         fmt: signPct2, get: surplusShare },
   'יחס_עומס_מלוות':       { col: 'd_loan_burden_ratio',       label: 'עומס מלוות',            fmt: dec1 },
   'אחוז_פחת_מים':         { col: 'b_water_loss_pct',          label: 'פחת מים',               fmt: pct1 },
   'אחוז_מחזור_פסולת':     { col: 'b_recycling_pct',           label: 'מחזור פסולת',           fmt: pct1 },
@@ -54,6 +58,24 @@ export const METRICS: Record<string, { col: keyof AuthorityYearly; label: string
   'גידול_אוכלוסייה_אחוז': { col: 'b_population_growth_pct',   label: 'גידול אוכלוסייה',       fmt: pct1 },
   'מאזן_הגירה':           { col: 'b_migration_balance',       label: 'מאזן הגירה',            fmt: sign },
 }
+
+/** b_surplus_deficit × 1000 / (b_budget_per_capita × h_population) × 100 — compute_scores_v2.1. */
+export function surplusShare(r: Pick<AuthorityYearly, 'b_surplus_deficit' | 'b_budget_per_capita' | 'h_population'>): number | null {
+  const s = r.b_surplus_deficit, b = r.b_budget_per_capita, p = r.h_population
+  if (![s, b, p].every(x => typeof x === 'number' && Number.isFinite(x)) || b! * p! <= 0) return null
+  return (s! * 1000) / (b! * p!) * 100
+}
+
+/** A metric's raw value in one row: its column, or its derivation. */
+export function metricValue(field: string, row: AuthorityYearly | undefined): number | null {
+  const m = METRICS[field]
+  if (!m || !row) return null
+  const v = m.get ? m.get(row) : (row[m.col] as number | null)
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+
+// v2.1's surplus tiers: deficit 0…55, balanced (0…0.5%) 60…75, surplus 75…100.
+export const BALANCED_TOP = 0.5
 
 // Published with the index. Used when scoring_config.scope_note is empty, so
 // the page never shows a score without saying what it leaves out.
@@ -78,6 +100,11 @@ export function bandFor(score: number, cfg: Pick<ScoringConfig, 'cut_d_c' | 'cut
 /** Same formula as the scorer's metricScore: clamp((better(v) - p10) / (p90 - p10)) × 100. */
 export function metricScore(v: number | null | undefined, a: Pick<ScoringAnchor, 'low' | 'high' | 'direction'> | undefined): number | null {
   if (typeof v !== 'number' || !Number.isFinite(v) || !a) return null
+  if (a.direction === 'balance_tiers') {
+    return v < 0 ? Math.max(0, 55 * (1 - v / a.low))
+      : v <= BALANCED_TOP ? 60 + 15 * (v / BALANCED_TOP)
+      : Math.min(100, 75 + 25 * (v - BALANCED_TOP) / (a.high - BALANCED_TOP))
+  }
   if (a.high === a.low) return 50
   const b = a.direction === 'close_to_100' ? -Math.abs(v - 100) : a.direction === 'lower_better' ? -v : v
   return Math.max(0, Math.min(100, ((b - a.low) / (a.high - a.low)) * 100))
@@ -116,13 +143,15 @@ export function metricBreakdown(
   for (const d of DOMAIN_ORDER) {
     out[d] = (domains[d] ?? []).map(field => {
       const m = METRICS[field]
-      const raw = row && m ? (row[m.col] as number | null) : null
+      const raw = metricValue(field, row)
       // v1 has no monetary fields, so every anchor is year-less (data_year NULL).
       const a = anchors.find(x => x.comparison_group === group && x.field === field && x.data_year == null)
       const r = a ? peerRange(a) : null
       const peerText = !a || !m || !r
         ? null
-        : r.isDistance
+        : a.direction === 'balance_tiers'
+          ? `גירעון: C–D · מאוזן (0–${BALANCED_TOP}%): B · עודף חזק בקבוצה: ${m.fmt(a.high)}`
+          : r.isDistance
           ? `סטייה מ־100%: ${r.better.toFixed(1)}–${r.worse.toFixed(1)} נק׳`
           : `בקבוצה: חלש ${m.fmt(r.worse)} · חזק ${m.fmt(r.better)}`
       const score = metricScore(raw, a)
@@ -330,8 +359,7 @@ export function metricSeries(
   const m = METRICS[field]
   const anchorFor = (g: string | undefined) => anchors.find(a => a.comparison_group === g && a.field === field && a.data_year == null)
   const points = years.map(year => {
-    const raw = m ? (rows.find(r => r.data_year === year)?.[m.col] as number | null | undefined) : null
-    const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : null
+    const value = metricValue(field, rows.find(r => r.data_year === year))
     const sc = metricScore(value, anchorFor(scores.find(s => s.data_year === year)?.comparison_group))
     return { year, value, letter: sc != null && metricCuts ? letterFor(sc, metricCuts) : null }
   })
@@ -343,7 +371,8 @@ export function metricSeries(
     label: m?.label ?? field,
     fmt: m?.fmt ?? (v => String(v)),
     points,
-    band: r && !r.isDistance ? { worse: r.worse, better: r.better } : null,
-    higherBetter: a ? (a.direction === 'higher_better' ? true : a.direction === 'lower_better' ? false : null) : null,
+    // for the surplus tiers the shaded band is the balanced zone, 0…0.5%
+    band: a?.direction === 'balance_tiers' ? { worse: 0, better: BALANCED_TOP } : r && !r.isDistance ? { worse: r.worse, better: r.better } : null,
+    higherBetter: a ? (a.direction === 'higher_better' || a.direction === 'balance_tiers' ? true : a.direction === 'lower_better' ? false : null) : null,
   }
 }

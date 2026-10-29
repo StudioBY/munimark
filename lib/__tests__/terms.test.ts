@@ -34,3 +34,21 @@ describe('authorityTerms — a term ends where the next one in the same authorit
     expect(ts[0].window).toEqual([2014, 2018])
   })
 })
+
+describe('authorityTerms — a head who left mid-term (migration 015)', () => {
+  const left = (x: MayorTerm, d: string): MayorTerm => ({ ...x, left_office: d, left_office_source: 'test' })
+  it('Shaar HaNegev: killed 7.10.2023, election postponed to November 2024 — 2023 is his, 2024 an interim', () => {
+    const ts = authorityTerms([left(t('term_2018', 'ליבשטין'), '2023-10-07'), t('term_2024_nov', 'אפשטיין', true)])
+    expect(ts.map(x => [x.name, x.window])).toEqual([['ליבשטין', [2019, 2023]], ['ממלא/ת מקום', [2024, 2024]], ['אפשטיין', [2025, 2029]]])
+    expect(termForYear(ts, 2024)?.interim).toBe(true)
+    expect(termForYear(ts, 2024)?.personSlug).toBeNull()
+  })
+  it('left in the first half of a year: that year is already the interim\'s', () => {
+    const ts = authorityTerms([left(t('term_2018', 'A'), '2022-03-01'), t('term_2024_regular', 'B', true)])
+    expect(ts.map(x => x.window)).toEqual([[2019, 2021], [2022, 2023], [2024, 2028]])
+  })
+  it('left in the last year of the term: nothing changes', () => {
+    const ts = authorityTerms([left(t('term_2018', 'A'), '2023-11-01'), t('term_2024_regular', 'B', true)])
+    expect(ts.map(x => x.window)).toEqual([[2019, 2023], [2024, 2028]])
+  })
+})

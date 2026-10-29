@@ -153,6 +153,8 @@ export interface MayorTerm {
   election_pct: string | null
   is_current: boolean
   changed_from_previous: boolean | null
+  left_office?: string | null        // migration 015: the day a head left mid-term
+  left_office_source?: string | null
   source: string | null
   notes: string | null
   created_at: string
@@ -199,7 +201,7 @@ export interface ScoringAnchor {
   low: number                   // p10, in the better-is-higher sense
   high: number                  // p90
   n_observations: number
-  direction: 'higher_better' | 'lower_better' | 'close_to_100'
+  direction: 'higher_better' | 'lower_better' | 'close_to_100' | 'balance_tiers'   // balance_tiers: v2.1 surplus
 }
 
 export interface ScoringConfig {

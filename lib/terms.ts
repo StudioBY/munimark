@@ -18,23 +18,47 @@ export interface AuthorityTerm {
   personSlug: string | null
   isCurrent: boolean
   window: [number, number]     // attributed data years
+  interim?: boolean            // years after a head left mid-term, before the next term
+}
+
+// A head who left mid-term (mayor_terms.left_office, migration 015) keeps the
+// year of leaving only if they served most of it: after 30 June. The years from
+// then until the next term are an interim — run by an acting head, credited to
+// no elected one, and never to the head who had left.
+const lastYearServed = (left: string): number => {
+  const [y, m] = left.split('-').map(Number)
+  return m > 6 ? y : y - 1
 }
 
 export function authorityTerms(terms: MayorTerm[]): AuthorityTerm[] {
   const sorted = [...terms]
     .map(t => ({ t, start: termAttributedYears(t.term_label)[0], end: termAttributedYears(t.term_label)[1] }))
     .sort((a, b) => a.start - b.start)
-  return sorted.map(({ t, start, end }, i) => {
+  return sorted.flatMap(({ t, start, end }, i) => {
     const next = sorted[i + 1]
-    return {
+    const termEnd = next ? Math.max(start, next.start - 1) : end
+    const served = t.left_office ? Math.min(termEnd, lastYearServed(t.left_office)) : termEnd
+    const head: AuthorityTerm = {
       label: t.term_label,
       spanLabel: termSpanLabel(t.term_label),
       name: t.mayors?.name ?? t.full_name,
       photo: t.mayors?.photo_url ?? null,
       personSlug: t.mayors?.slug ?? null,
       isCurrent: t.is_current,
-      window: [start, next ? Math.max(start, next.start - 1) : end] as [number, number],
+      window: [start, Math.max(start, served)],
     }
+    if (served >= termEnd) return [head]
+    const interim: AuthorityTerm = {
+      label: `${t.term_label}_interim`,
+      spanLabel: served + 1 === termEnd ? String(termEnd) : `${served + 1}–${termEnd}`,
+      name: 'ממלא/ת מקום',
+      photo: null,
+      personSlug: null,
+      isCurrent: false,
+      window: [served + 1, termEnd],
+      interim: true,
+    }
+    return served < start ? [interim] : [head, interim]
   })
 }
 
