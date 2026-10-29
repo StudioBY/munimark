@@ -100,6 +100,7 @@ export interface MetricLine {
   value: number | null
   valueText: string
   score: number | null
+  letter: Band | null      // v2: the metric's letter against its peer group
   peerText: string | null
 }
 
@@ -109,6 +110,7 @@ export function metricBreakdown(
   group: string,
   anchors: ScoringAnchor[],
   domains: Record<string, string[]>,
+  metricCuts?: number[] | null,
 ): Record<string, MetricLine[]> {
   const out: Record<string, MetricLine[]> = {}
   for (const d of DOMAIN_ORDER) {
@@ -123,12 +125,14 @@ export function metricBreakdown(
         : r.isDistance
           ? `סטייה מ־100%: ${r.better.toFixed(1)}–${r.worse.toFixed(1)} נק׳`
           : `בקבוצה: חלש ${m.fmt(r.worse)} · חזק ${m.fmt(r.better)}`
+      const score = metricScore(raw, a)
       return {
         field,
         label: m?.label ?? field,
         value: raw,
         valueText: raw != null && m ? m.fmt(raw) : '—',
-        score: metricScore(raw, a),
+        score,
+        letter: score != null && metricCuts ? letterFor(score, metricCuts) : null,
         peerText,
       }
     })
@@ -144,20 +148,27 @@ export interface TermSummary {
   delta: number | null     // last.score − first.score
 }
 
-/** The scored record of one term window, from the single-year scores. */
-export function termSummary(scores: Score[], [from, to]: [number, number]): TermSummary {
+/**
+ * The scored record of one term window, from the single-year values: the
+ * 0-100 score in v1, or pass `yearValue` (v2: the year's points, 1-4).
+ */
+export function termSummary(
+  scores: Score[],
+  [from, to]: [number, number],
+  yearValue: (s: Score) => number | null | undefined = s => s.score,
+): TermSummary {
   const inWin = scores
-    .filter(s => s.data_year >= from && s.data_year <= to && s.score != null)
+    .filter(s => s.data_year >= from && s.data_year <= to && yearValue(s) != null)
     .sort((a, b) => a.data_year - b.data_year)
   if (!inWin.length) return { years: [], mean: null, first: null, last: null, delta: null }
-  const vals = inWin.map(s => Number(s.score))
+  const vals = inWin.map(s => Number(yearValue(s)))
   const first = inWin[0], last = inWin[inWin.length - 1]
   return {
     years: inWin.map(s => s.data_year),
     mean: vals.reduce((a, b) => a + b, 0) / vals.length,
     first,
     last,
-    delta: inWin.length > 1 ? Number(last.score) - Number(first.score) : null,
+    delta: inWin.length > 1 ? vals[vals.length - 1] - vals[0] : null,
   }
 }
 
@@ -167,4 +178,172 @@ export function extremes(b: Record<string, MetricLine[]>): { best: MetricLine | 
   if (!all.length) return { best: null, worst: null }
   const sorted = [...all].sort((a, b) => b.score! - a.score!)
   return { best: sorted[0], worst: sorted[sorted.length - 1] }
+}
+
+// ── v2: letter grades ─────────────────────────────────────────────────────
+// Mirrors agents/scorer/scripts/compute_scores_v2_2026-10-28.mjs. A metric's
+// letter comes from its 0-100 score and the frozen metric cuts; the domain
+// letters and the band are read from `scores` as stored, never recomputed.
+
+export const LETTER_POINTS: Record<Band, number> = { A: 4, B: 3, C: 2, D: 1 }
+
+/** The letter a value earns against [C, B, A] cut points — the scorer's `letter`. */
+export function letterFor(v: number, cuts: number[]): Band {
+  return v >= cuts[2] ? 'A' : v >= cuts[1] ? 'B' : v >= cuts[0] ? 'C' : 'D'
+}
+
+/**
+ * The band cut points on the 1-4 points scale, exact. cut_* are NUMERIC(_,2)
+ * and round 2.6347 to 2.63, which would move an authority across the line.
+ */
+export function bandCuts(cfg: Pick<ScoringConfig, 'cut_d_c' | 'cut_c_b' | 'cut_b_a' | 'rules'>): number[] {
+  return cfg.rules?.band_cuts ?? [Number(cfg.cut_d_c), Number(cfg.cut_c_b), Number(cfg.cut_b_a)]
+}
+
+/** Why the published band differs from what the three-year mean alone gives. */
+export function heldReason(s: Pick<Score, 'band' | 'band_natural' | 'domain_letters'>): 'consistency' | 'stability' | null {
+  if (!s.band || !s.band_natural || s.band === s.band_natural) return null
+  const ls = Object.values(s.domain_letters ?? {})
+  if ((s.band_natural === 'A' && !ls.includes('A')) || (s.band_natural === 'D' && !ls.includes('D'))) return 'consistency'
+  return 'stability'
+}
+
+// ── v2: the term to date (decided 2026-10-29) ─────────────────────────────
+// The grade is the mean of the term's yearly points so far: the first year's
+// letter in year one, one letter for the whole term at its end. Each year keeps
+// its own letter beside it, and A in every year of the term (two at least)
+// earns a "+". The consistency rule holds at both levels: A needs a domain A,
+// D a domain D. The yearly points and every cut are v2's, frozen.
+
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
+
+/** A domain's points in one year: the mean of its metric letters (A=4 … D=1). */
+export function domainYearPoints(b: Record<string, MetricLine[]>): Record<string, number | null> {
+  return Object.fromEntries(Object.entries(b).map(([d, ls]) =>
+    [d, mean(ls.filter(l => l.letter).map(l => LETTER_POINTS[l.letter!]))]))
+}
+
+/** A from points with no domain A is a B; D with no domain D is a C. */
+export function consistentLetter(natural: Band, domainLetters: (Band | null)[]): Band {
+  if (natural === 'A' && !domainLetters.includes('A')) return 'B'
+  if (natural === 'D' && !domainLetters.includes('D')) return 'C'
+  return natural
+}
+
+export interface GradeYear { year: number; points: number | null; letter: Band | null }
+
+export interface TermGrade {
+  years: GradeYear[]       // every year of the window, scored or not
+  scored: number
+  points: number | null    // mean of the scored years' points
+  natural: Band | null     // the letter of that mean alone
+  letter: Band | null      // after the consistency rule
+  plus: boolean
+  domains: Record<string, { points: number | null; letter: Band | null }>
+}
+
+/**
+ * The grade of one term window from its yearly points and yearly domain
+ * points. `domainPoints` maps a year to that year's domain points, as
+ * domainYearPoints gives them.
+ */
+export function termGrade(
+  window: [number, number],
+  scores: Pick<Score, 'data_year' | 'points'>[],
+  domainPoints: Record<number, Record<string, number | null>>,
+  cfg: Pick<ScoringConfig, 'cut_d_c' | 'cut_c_b' | 'cut_b_a' | 'rules' | 'domain_cuts'>,
+): TermGrade {
+  const cuts = bandCuts(cfg)
+  const dCuts = cfg.domain_cuts ?? cuts
+  const domLetters = (dp: Record<string, number | null> | undefined) =>
+    Object.values(dp ?? {}).map(p => (p == null ? null : letterFor(p, dCuts)))
+  const years: GradeYear[] = []
+  for (let y = window[0]; y <= window[1]; y++) {
+    const p = scores.find(s => s.data_year === y)?.points
+    const points = p == null ? null : Number(p)
+    years.push({ year: y, points, letter: points == null ? null : consistentLetter(letterFor(points, cuts), domLetters(domainPoints[y])) })
+  }
+  const scoredYears = years.filter(y => y.points != null)
+  const points = mean(scoredYears.map(y => y.points!))
+  const domainKeys = [...new Set(scoredYears.flatMap(y => Object.keys(domainPoints[y.year] ?? {})))]
+  const domains = Object.fromEntries(domainKeys.map(d => {
+    const p = mean(scoredYears.map(y => domainPoints[y.year]?.[d]).filter((v): v is number => v != null))
+    return [d, { points: p, letter: p == null ? null : letterFor(p, dCuts) }]
+  }))
+  const natural = points == null ? null : letterFor(points, cuts)
+  const letter = natural && consistentLetter(natural, Object.values(domains).map(d => d.letter))
+  return {
+    years,
+    scored: scoredYears.length,
+    points,
+    natural,
+    letter,
+    plus: letter === 'A' && scoredYears.length >= 2 && scoredYears.every(y => y.letter === 'A'),
+    domains,
+  }
+}
+
+/**
+ * Consecutive A years ending at the newest year, under one head. The seal
+ * shows the newest year's letter (decided 2026-10-29), with a "+" from two:
+ * a re-elected head carries the streak on, a new head starts from zero.
+ */
+export function aStreak(years: { year: number; letter: Band | null; head: string | null }[]): number {
+  const ys = [...years].sort((a, b) => a.year - b.year)
+  const last = ys[ys.length - 1]
+  if (!last || last.letter !== 'A') return 0
+  let n = 0
+  for (let i = ys.length - 1; i >= 0; i--) {
+    const y = ys[i]
+    if (y.letter !== 'A' || y.head !== last.head || (i < ys.length - 1 && ys[i + 1].year !== y.year + 1)) break
+    n++
+  }
+  return n
+}
+
+// ── per-metric trend: the real value each year, its letter, the peer range ──
+
+export interface MetricSeries {
+  field: string
+  label: string
+  fmt: (v: number) => string
+  points: { year: number; value: number | null; letter: Band | null }[]
+  // p10–p90 of the comparison group in the metric's own units, for the newest
+  // year's group. Null for close-to-100 metrics, whose anchors are distances.
+  band: { worse: number; better: number } | null
+  higherBetter: boolean | null
+}
+
+/**
+ * One scored metric over a run of years. Each year's letter is scored against
+ * THAT year's comparison group (a cluster can change within a term); the band
+ * drawn behind the line is the newest year's group.
+ */
+export function metricSeries(
+  field: string,
+  years: number[],
+  rows: AuthorityYearly[],
+  scores: Pick<Score, 'data_year' | 'comparison_group'>[],
+  anchors: ScoringAnchor[],
+  metricCuts: number[] | null | undefined,
+): MetricSeries {
+  const m = METRICS[field]
+  const anchorFor = (g: string | undefined) => anchors.find(a => a.comparison_group === g && a.field === field && a.data_year == null)
+  const points = years.map(year => {
+    const raw = m ? (rows.find(r => r.data_year === year)?.[m.col] as number | null | undefined) : null
+    const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : null
+    const sc = metricScore(value, anchorFor(scores.find(s => s.data_year === year)?.comparison_group))
+    return { year, value, letter: sc != null && metricCuts ? letterFor(sc, metricCuts) : null }
+  })
+  const newestGroup = [...scores].filter(s => years.includes(s.data_year)).sort((a, b) => a.data_year - b.data_year).pop()?.comparison_group
+  const a = anchorFor(newestGroup)
+  const r = a ? peerRange(a) : null
+  return {
+    field,
+    label: m?.label ?? field,
+    fmt: m?.fmt ?? (v => String(v)),
+    points,
+    band: r && !r.isDistance ? { worse: r.worse, better: r.better } : null,
+    higherBetter: a ? (a.direction === 'higher_better' ? true : a.direction === 'lower_better' ? false : null) : null,
+  }
 }

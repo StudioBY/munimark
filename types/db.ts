@@ -185,6 +185,11 @@ export interface Score {
   metrics_used: number | null
   metrics_possible: number | null
   methodology_version: string
+  // v2 (letters). v1 rows leave these null; v2 rows leave score/score_3yr/domain_* null.
+  points?: number | null            // this year alone, 1-4
+  points_3yr?: number | null        // the band is cut on this
+  domain_letters?: Record<string, 'A' | 'B' | 'C' | 'D'> | null   // three-year
+  domain_points_3yr?: Record<string, number> | null
 }
 
 export interface ScoringAnchor {
@@ -207,6 +212,11 @@ export interface ScoringConfig {
   hysteresis_pts: number | null
   rolling_years: number | null
   scope_note: string | null
+  // v2 only: [C, B, A] cut points per level. The exact band cuts are in
+  // rules.band_cuts; cut_* are NUMERIC(_,2) and rounded.
+  metric_cuts?: number[] | null
+  domain_cuts?: number[] | null
+  rules?: { band_cuts?: number[] } & Record<string, unknown> | null
 }
 
 export interface MayorPageData {

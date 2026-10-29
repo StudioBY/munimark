@@ -6,6 +6,11 @@ import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm, ScoringAnchor
 // the newest row would switch to it the moment it lands, showing v2 rows in a
 // v1 layout. Change this together with the interface, never alone.
 export const ACTIVE_METHOD = 'v1-2026-10-11'
+// The letter grades. The draft authority page shows these; the mayor page
+// stays on ACTIVE_METHOD until it has a letter layout too.
+export const LETTERS_METHOD = 'v2-2026-10-29'
+// v2 re-uses v1's metric layer: its 0-100 metric scores come from v1's anchors.
+const ANCHORS_OF: Record<string, string> = { [LETTERS_METHOD]: ACTIVE_METHOD }
 
 export interface AuthorityPageData {
   authority: Authority
@@ -18,7 +23,7 @@ export interface AuthorityPageData {
 }
 
 /** Everything an authority page renders, or null when the slug is unknown. */
-export async function loadAuthority(slug: string): Promise<AuthorityPageData | null> {
+export async function loadAuthority(slug: string, method: string = ACTIVE_METHOD): Promise<AuthorityPageData | null> {
   const supabase = await createClient()
 
   const { data: authority } = await supabase
@@ -49,7 +54,7 @@ export async function loadAuthority(slug: string): Promise<AuthorityPageData | n
       .from('scores')
       .select('*')
       .eq('authority_id', authority.id)
-      .eq('methodology_version', ACTIVE_METHOD)
+      .eq('methodology_version', method)
       .order('data_year', { ascending: true })
       .returns<Score[]>(),
     supabase
@@ -61,7 +66,7 @@ export async function loadAuthority(slug: string): Promise<AuthorityPageData | n
     supabase
       .from('scoring_config')
       .select('*')
-      .eq('methodology_version', ACTIVE_METHOD)
+      .eq('methodology_version', method)
       .returns<ScoringConfig[]>(),
   ])
 
@@ -74,7 +79,7 @@ export async function loadAuthority(slug: string): Promise<AuthorityPageData | n
     ? await supabase
         .from('scoring_anchors')
         .select('comparison_group, field, data_year, low, high, n_observations, direction')
-        .eq('methodology_version', cfg.methodology_version)
+        .eq('methodology_version', ANCHORS_OF[cfg.methodology_version] ?? cfg.methodology_version)
         .in('comparison_group', groups)
         .returns<ScoringAnchor[]>()
     : { data: [] as ScoringAnchor[] }

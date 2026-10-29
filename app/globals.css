@@ -378,8 +378,8 @@ tbody tr:hover { background:var(--surface-2); }
 .ap2-brand { display:flex;align-items:center;gap:8px;color:var(--brand-navy); }
 
 /* Hero v2 */
-.ap2-hero { display:grid;grid-template-columns:minmax(0,1fr) 320px;overflow:hidden;padding:0; }
-.ap2-id { padding:28px;display:flex;flex-direction:column;gap:24px; }
+.ap2-hero { display:grid;grid-template-columns:minmax(0,1fr) 560px;overflow:hidden;padding:0; }
+.ap2-id { padding:28px;display:flex;flex-direction:column;justify-content:center;gap:24px; }
 .ap2-id-top { display:flex;gap:20px;align-items:center; }
 .ap2-logo { width:104px;height:120px;border-radius:16px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--line);font-size:34px;font-weight:800;color:var(--accent); }
 .ap2-logo.has-img { background:#fff; }
@@ -397,7 +397,7 @@ tbody tr:hover { background:var(--surface-2); }
 .ap2-fact .v { font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.4px; }
 .ap2-fact .l { font-size:11.5px;color:var(--ink-2); }
 .ap2-fact .y { color:var(--ink-3);font-size:10.5px; }
-.ap2-seal { background:radial-gradient(circle at 50% 35%, var(--brand-navy-2), var(--brand-navy) 70%);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:26px 22px;text-align:center; }
+.ap2-seal { background:radial-gradient(circle at 70% 40%, var(--brand-navy-2), var(--brand-navy) 70%);color:#fff;display:flex;align-items:center;gap:26px;padding:26px 28px;overflow:hidden; }
 .ap2-seal-eyebrow { font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.7);font-weight:600; }
 .ap2-band { font-size:13px;font-weight:800;padding:4px 14px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25); }
 .ap2-band.band-A { color:var(--brand-gold);border-color:var(--brand-gold); }
@@ -474,3 +474,75 @@ tbody tr:hover { background:var(--surface-2); }
 .tx-tab.compact .tx-tab-text { display:none; }
 .tx-tab.compact .tx-tab-score { font-size:13px; }
 .tx-tab { height:64px; }
+
+/* ── v2 letters ─────────────────────────────────────────────── */
+.lt { display:inline-flex;align-items:center;justify-content:center;font-weight:800;border-radius:6px;line-height:1;flex-shrink:0; }
+.lt-m { width:30px;height:30px;font-size:16px; }
+.lt-s { width:21px;height:21px;font-size:11.5px;border-radius:5px; }
+.lt-A { background:var(--brand-gold);color:var(--brand-navy); }
+.lt-B { background:var(--accent);color:#fff; }
+.lt-C { background:var(--brass-soft);color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass); }
+.lt-D { background:var(--neg-soft);color:var(--neg);box-shadow:inset 0 0 0 1px var(--neg); }
+.lt-none { background:var(--line-2);color:var(--ink-3); }
+.ap2-doms { display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;margin:4px 0 2px; }
+.ap2-dom { display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;color:rgba(255,255,255,.8); }
+.ap2-seal .lt-A { background:var(--brand-gold);color:var(--brand-navy); }
+.ap2-seal .lt-B { background:#fff;color:var(--brand-navy); }
+.ap2-seal .lt-C { background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55); }
+.ap2-seal .lt-D { background:transparent;color:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25); }
+.lb-domain summary { grid-template-columns:80px 30px 1fr 64px 14px; }
+.lb-span { font-size:12px;color:var(--ink-3); }
+.lb-pts { font-size:12px;color:var(--ink-3);text-align:left; }
+.lb-metric { display:grid;grid-template-columns:minmax(110px,1.2fr) 90px 21px minmax(150px,1.6fr);gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line-2);font-size:12.5px; }
+.lb-metric:last-child { border-bottom:none; }
+.lb-metric-val { font-weight:700; }
+.sc-ext .lt { align-self:center; }
+.tx-tab-score .lt { vertical-align:middle; }
+.tx-panel-stats .v .lt { vertical-align:-3px; }
+.tx-bar-v { font-weight:800; }
+.tx-seg.on .tx-bar.bar-A { background:var(--brand-gold); }
+.tx-col.focus .tx-bar.bar-A { background:var(--brand-gold);opacity:1; }
+.lb-metrics-h { font-size:11px;font-weight:700;color:var(--ink-3);padding:4px 0 2px; }
+.tx-plus { font-size:13px;font-weight:800;margin-inline-start:2px;color:#A8862F; }
+.ap2-seal-prev { display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75); }
+.ap2-seal-prev .lt-A { background:var(--brand-gold);color:var(--brand-navy); }
+.ap2-seal-prev .lt-B { background:#fff;color:var(--brand-navy); }
+.ap2-seal-prev .lt-C, .ap2-seal-prev .lt-D { background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.45); }
+
+/* hero, decided 29.10: the seal reads the newest year; the years before sit beside it */
+.ap2-seal-dial { flex-shrink:0;display:flex; }
+.ap2-seal-side { display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0; }
+.ap2-seal-side .ap2-seal-word { font-size:16px;font-weight:700; }
+.ap2-side-h { font-size:10.5px;font-weight:600;letter-spacing:.06em;color:rgba(255,255,255,.55);margin-top:8px; }
+.ap2-years { display:flex;gap:10px; }
+.ap2-yr { display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:rgba(255,255,255,.6); }
+.ap2-yr.now { color:#fff;font-weight:700; }
+.ap2-yr.now .lt { outline:2px solid rgba(255,255,255,.85);outline-offset:2px; }
+.ap2-seal-side .ap2-doms { display:flex;gap:12px;margin:0; }
+.ap2-seal-side .ap2-dom { flex-direction:row;gap:5px; }
+.ap2-factrow { display:flex;align-items:stretch;justify-content:space-between;padding:16px 6px; }
+.ap2-f { flex:1 1 auto;display:flex;flex-direction:column;gap:3px;padding:0 12px;border-inline-start:1px solid var(--line-2);white-space:nowrap; }
+.ap2-f:first-child { border-inline-start:none; }
+.ap2-f .v { font-size:18px;font-weight:400;color:var(--ink);letter-spacing:-.2px; }
+.ap2-f .l { font-size:11.5px;font-weight:300;color:var(--ink-2); }
+.ap2-f-note { margin-inline-start:auto;align-self:center;font-size:10.5px;font-weight:300;color:var(--ink-3);padding:0 12px;white-space:nowrap; }
+
+/* per-metric trends: real value, the year's letter, the peer range */
+.mt-legend { font-size:12px;color:var(--ink-3);margin:-4px 0 6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
+.mt-legend-band { display:inline-block;width:22px;height:10px;border-radius:3px;background:var(--brand-blue);opacity:.15; }
+.mt-domain { margin-bottom:14px; }
+.mt-domain-h { font-size:13px;font-weight:800;color:var(--brand-navy);margin:6px 0 8px; }
+.mt-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px; }
+.mt-card { background:var(--surface);border:1px solid var(--line-2);border-radius:var(--rs);padding:10px 12px 4px; }
+.mt-head { display:flex;align-items:center;gap:8px; }
+.mt-name { font-size:13px;font-weight:700; }
+.mt-dir { font-size:10.5px;color:var(--ink-3); }
+.mt-now { margin-inline-start:auto;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700; }
+.mt-svg { width:100%;height:auto;display:block;margin-top:4px; }
+.mt-empty { font-size:12px;color:var(--ink-3);padding:24px 0;text-align:center; }
+.yr.yr-avg { border-inline-start:1px solid var(--line);margin-inline-start:4px;padding-inline:12px; }
+.lb-avg-row { display:flex;align-items:center;justify-content:space-between;gap:10px; }
+.lb-avg-line { padding:7px 0;border-bottom:1px dashed var(--line-2);font-size:12.5px; }
+.lb-avg-line:last-child { border-bottom:none; }
+.lb-avg-years { display:flex;gap:6px;direction:ltr; }
+.lb-metrics-h .lb-avg-years span { width:21px;text-align:center;font-size:9.5px;font-weight:400; }

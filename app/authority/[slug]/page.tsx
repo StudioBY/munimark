@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { loadAuthority } from '@/lib/loadAuthority'
+import { loadAuthority, LETTERS_METHOD } from '@/lib/loadAuthority'
 import { authorityTypePrefix } from '@/lib/getMayorForYear'
 import AuthorityProfile from './AuthorityProfile'
 
@@ -13,7 +13,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
-  const data = await loadAuthority(slug)
+  const data = await loadAuthority(slug, LETTERS_METHOD)
   if (!data) return { title: 'Munimark' }
   const { authority } = data
   return {
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function AuthorityPage({ params }: Props) {
   const { slug } = await params
-  const data = await loadAuthority(slug)
+  const data = await loadAuthority(slug, LETTERS_METHOD)
   if (!data) notFound()
   return <AuthorityProfile {...data} />
 }
