@@ -19,6 +19,7 @@ export interface AuthorityTerm {
   isCurrent: boolean
   window: [number, number]     // attributed data years
   interim?: boolean            // years after a head left mid-term, before the next term
+  leftOffice?: string | null   // the day the head left mid-term (mayor_terms.left_office)
 }
 
 // A head who left mid-term (mayor_terms.left_office, migration 015) keeps the
@@ -46,6 +47,7 @@ export function authorityTerms(terms: MayorTerm[]): AuthorityTerm[] {
       personSlug: t.mayors?.slug ?? null,
       isCurrent: t.is_current,
       window: [start, Math.max(start, served)],
+      leftOffice: t.left_office ?? null,
     }
     if (served >= termEnd) return [head]
     const interim: AuthorityTerm = {

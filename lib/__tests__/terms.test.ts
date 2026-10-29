@@ -45,6 +45,14 @@ describe('authorityTerms — a head who left mid-term (migration 015)', () => {
     const ts = authorityTerms([left(t('term_2018', 'אסקוזידו'), '2021-08-01'), t('term_2021_special', 'רייכנר'), t('term_2024_regular', 'רייכנר', true)])
     expect(ts.map(x => [x.name, x.window])).toEqual([['אסקוזידו', [2019, 2021]], ['רייכנר', [2022, 2023]], ['רייכנר', [2024, 2028]]])
   })
+  it('Ramla: resigned April 2017, successor elected June 2017 — 2016 his, 2017 the successor\'s', () => {
+    const ts = authorityTerms([left(t('term_2013', 'לביא'), '2017-04-18'), t('term_2017_special_h1', 'וידל'), t('term_2018', 'וידל', true)])
+    expect(ts.map(x => [x.name, x.window])).toEqual([['לביא', [2014, 2016]], ['וידל', [2017, 2018]], ['וידל', [2019, 2023]]])
+  })
+  it('Tel Mond: removed September 2016, appointed committee, special election December 2020', () => {
+    const ts = authorityTerms([left(t('term_2013', 'גולן'), '2016-09-06'), t('term_2018', 'ועדה'), t('term_2020_special', 'קפלן'), t('term_2024_regular', 'קפלן', true)])
+    expect(ts.map(x => [x.name, x.window])).toEqual([['גולן', [2014, 2016]], ['ממלא/ת מקום', [2017, 2018]], ['ועדה', [2019, 2020]], ['קפלן', [2021, 2023]], ['קפלן', [2024, 2028]]])
+  })
   it('Shaar HaNegev: killed 7.10.2023, election postponed to November 2024 — 2023 is his, 2024 an interim', () => {
     const ts = authorityTerms([left(t('term_2018', 'ליבשטין'), '2023-10-07'), t('term_2024_nov', 'אפשטיין', true)])
     expect(ts.map(x => [x.name, x.window])).toEqual([['ליבשטין', [2019, 2023]], ['ממלא/ת מקום', [2024, 2024]], ['אפשטיין', [2025, 2029]]])

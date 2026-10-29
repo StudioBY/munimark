@@ -46,6 +46,15 @@ export function getMayorForYear(
       : null,
   })
 
+  // ── A mid-term term (special election, appointment) takes its own years ──
+  if (year < 2026) {
+    const mid = terms
+      .filter(t => t.term_label !== 'term_2023_special' && midTermLabel(t.term_label))
+      .filter(t => { const [a, b] = termAttributedYears(t.term_label); return year >= a && year <= b })
+      .sort((a, b) => termAttributedYears(b.term_label)[0] - termAttributedYears(a.term_label)[0])[0]
+    if (mid) return toResult(mid)
+  }
+
   // ── Year 2026+ → current term ──
   if (year >= 2026) {
     return current ? toResult(current) : null
@@ -89,11 +98,6 @@ export function getMayorForYear(
 
   // ── Year 2019-2023 ──
   if (year >= 2019) {
-    // a 2021 special election (נחל שורק: the head left in August 2021) takes 2022 on
-    if (year >= 2022) {
-      const special2021 = byLabel('term_2021_special')
-      if (special2021) return toResult(special2021)
-    }
     // term_2023_special overrides from 2023+
     if (year >= 2023) {
       const special2023 = byLabel('term_2023_special')
@@ -117,6 +121,21 @@ export function getMayorForYear(
   return null
 }
 
+/**
+ * A mid-term term: a special election (or a council's choice) after a head
+ * left, or a ministry appointment — term_<year>_special / term_<year>_appointed,
+ * with _h1 when the head took office before July. Like leaving (lib/terms.ts),
+ * a year belongs to whoever held office through most of it: before July the
+ * year of entry is theirs, otherwise attribution starts the year after.
+ * It runs to the end of the regular cycle it falls in; a later term cuts it.
+ */
+export function midTermLabel(termLabel: string): { year: number; kind: 'special' | 'appointed'; firstHalf: boolean } | null {
+  const m = termLabel.match(/^term_(\d{4})_(special|appointed)(_h1)?$/)
+  return m ? { year: Number(m[1]), kind: m[2] as 'special' | 'appointed', firstHalf: !!m[3] } : null
+}
+// The last data year of the regular cycle a year falls in (elections 2013, 2018, 2024).
+const cycleEnd = (y: number) => (y <= 2018 ? 2018 : y <= 2023 ? 2023 : 2028)
+
 /** Map a term_label to a Hebrew display label */
 /**
  * The years a term RUNS — the election year through the next election.
@@ -137,7 +156,6 @@ export function termSpanYears(termLabel: string): [number, number | null] {
   switch (termLabel) {
     case 'term_2013':             return [2013, 2018]
     case 'term_2018':             return [2018, 2024]
-    case 'term_2021_special':     return [2021, 2024]
     case 'term_2023_special':     return [2023, 2024]
     case 'term_2023_appointed':   return [2023, 2024]
     case 'term_2024_regular':     return [2024, null]   // current
@@ -145,8 +163,10 @@ export function termSpanYears(termLabel: string): [number, number | null] {
     case 'term_2025_feb':         return [2025, null]
     case 'term_2025_replacement': return [2025, null]
     case 'term_2026_repeat':      return [2026, null]
-    default:                      return [2024, null]
   }
+  const mid = midTermLabel(termLabel)
+  if (mid) return [mid.year, mid.year <= 2018 ? 2018 : mid.year <= 2023 ? 2024 : null]
+  return [2024, null]
 }
 
 /** "2013–2018", or "2024 –" while the term is still running. */
@@ -174,6 +194,8 @@ export function termDisplayLabel(termLabel: string): string {
     term_2025_replacement: 'מינוי 2025',
     term_2026_repeat: 'בחירות חוזרות 2026',
   }
+  const mid = midTermLabel(termLabel)
+  if (!map[termLabel] && mid) return mid.kind === 'special' ? `קדנציה מיוחדת ${mid.year}` : `מינוי ${mid.year}`
   return map[termLabel] ?? termLabel
 }
 
@@ -196,15 +218,19 @@ export function termAttributedYears(termLabel: string): [number, number] {
   switch (termLabel) {
     case 'term_2013':             return [2014, 2018]
     case 'term_2018':             return [2019, 2023]
-    case 'term_2021_special':     return [2022, 2023]
     case 'term_2023_special':     return [2023, 2025]
     case 'term_2024_regular':     return [2024, 2028]
     case 'term_2024_nov':         return [2025, 2029]
     case 'term_2025_feb':         return [2025, 2029]
     case 'term_2025_replacement': return [2026, 2028]
     case 'term_2026_repeat':      return [2026, 2028]
-    default:                      return [2024, 2030]
   }
+  const mid = midTermLabel(termLabel)
+  if (mid) {
+    const from = mid.firstHalf ? mid.year : mid.year + 1
+    return [from, Math.max(from, cycleEnd(from))]
+  }
+  return [2024, 2030]
 }
 
 /** Format authority type for display: עירייה→"עיריית", etc. */

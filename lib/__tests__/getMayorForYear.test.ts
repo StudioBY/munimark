@@ -45,6 +45,13 @@ describe('termAttributedYears — which data years are a term\'s', () => {
     ['term_2018', [2019, 2023]],
     ['term_2024_regular', [2024, 2028]],
     ['term_2021_special', [2022, 2023]],
+    // mid-term: from the year after, or that year when in office before July; to the cycle's end
+    ['term_2017_special', [2018, 2018]],
+    ['term_2017_special_h1', [2017, 2018]],
+    ['term_2015_special', [2016, 2018]],
+    ['term_2019_special', [2020, 2023]],
+    ['term_2022_appointed_h1', [2022, 2023]],
+    ['term_2026_appointed', [2027, 2028]],
     ['term_2023_special', [2023, 2025]],
     ['term_2024_nov', [2025, 2029]],
     ['term_2025_feb', [2025, 2029]],
@@ -176,6 +183,14 @@ describe('getMayorForYear — which term a data year belongs to', () => {
     expect(labelFor(terms, 2022)).toBe('term_2021_special')
     expect(labelFor(terms, 2023)).toBe('term_2021_special')
     expect(labelFor(terms, 2024)).toBe('term_2024_regular')
+  })
+
+  it('lets any mid-term term take its own years (Ramla: special election, June 2017)', () => {
+    const terms = [term('term_2013'), term('term_2017_special_h1'), term('term_2018', true)]
+    expect(labelFor(terms, 2016)).toBe('term_2013')
+    expect(labelFor(terms, 2017)).toBe('term_2017_special_h1')
+    expect(labelFor(terms, 2018)).toBe('term_2017_special_h1')
+    expect(labelFor(terms, 2019)).toBe('term_2018')
   })
 
   it('uses the current term from 2026 on', () => {

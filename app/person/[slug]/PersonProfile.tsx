@@ -135,8 +135,10 @@ export default function PersonProfile({ person, terms, authorities, years: allYe
   const authBySymbol = new Map(authorities.map(a => [a.symbol, a]))
 
   // Sort terms chronologically
+  // By the first data year: mid-term labels (term_2017_special …) are not in TERM_ORDER.
   const sortedTerms = [...terms].sort(
-    (a, b) => TERM_ORDER.indexOf(a.term_label) - TERM_ORDER.indexOf(b.term_label)
+    (a, b) => termAttributedYears(a.term_label)[0] - termAttributedYears(b.term_label)[0]
+      || TERM_ORDER.indexOf(a.term_label) - TERM_ORDER.indexOf(b.term_label)
   )
 
   // Build the full year→metric map from ALL authority_yearly rows

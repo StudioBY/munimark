@@ -69,11 +69,15 @@ export default function HeadProfile({ person, authorities }: { person: Mayor; au
   // Years in office (the term's span), not data years: elected October 2013
   // is "since 2013" though the first data year attributed is 2014.
   const officeYears = (span: string) => span.match(/\d{4}/g)?.map(Number) ?? []
-  const since = rec.stints[0] ? officeYears(rec.stints[0].term.spanLabel)[0] ?? null : null
-  const until = lastStint && !serving ? officeYears(lastStint.term.spanLabel)[1] ?? null : null
+  // in the authority they head now (or last headed), not an earlier one
+  const homeStints = rec.stints.filter(s => s.authoritySlug === lastStint?.authoritySlug)
+  const since = homeStints[0] ? officeYears(homeStints[0].term.spanLabel)[0] ?? null : null
+  const until = lastStint && !serving
+    ? (lastStint.term.leftOffice ? Number(lastStint.term.leftOffice.slice(0, 4)) : officeYears(lastStint.term.spanLabel)[1] ?? null)
+    : null
   // mayor_terms begins with the 2013 election, so a head already in office
   // then may have served before it: a floor, not a start.
-  const sinceText = since == null ? null : rec.stints[0].term.label === 'term_2013' ? `לפחות מ־${since}` : `מ־${since}`
+  const sinceText = since == null ? null : homeStints[0].term.label === 'term_2013' ? `לפחות מ־${since}` : `מ־${since}`
 
   // The seal: the head's own newest scored year, with "+" for an A streak.
   const newest = rec.newest
