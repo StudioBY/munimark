@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm, ScoringAnchor, ScoringConfig } from '@/types/db'
 
+// The methodology the site shows. Pinned, not "newest config": v2 (letters) is
+// written beside v1 before the letter interface exists, and a page that took
+// the newest row would switch to it the moment it lands, showing v2 rows in a
+// v1 layout. Change this together with the interface, never alone.
+export const ACTIVE_METHOD = 'v1-2026-10-11'
+
 export interface AuthorityPageData {
   authority: Authority
   mayor: Mayor | null
@@ -43,6 +49,7 @@ export async function loadAuthority(slug: string): Promise<AuthorityPageData | n
       .from('scores')
       .select('*')
       .eq('authority_id', authority.id)
+      .eq('methodology_version', ACTIVE_METHOD)
       .order('data_year', { ascending: true })
       .returns<Score[]>(),
     supabase
@@ -54,14 +61,14 @@ export async function loadAuthority(slug: string): Promise<AuthorityPageData | n
     supabase
       .from('scoring_config')
       .select('*')
-      .order('frozen_at', { ascending: false })
+      .eq('methodology_version', ACTIVE_METHOD)
       .returns<ScoringConfig[]>(),
   ])
 
-  // One methodology at a time: v2 will be written beside v1, never over it,
-  // so a page must not mix rows from the two.
+  // One methodology at a time: v2 is written beside v1, never over it, so a
+  // page must not mix rows from the two.
   const cfg = cfgRows?.[0] ?? null
-  const scores = (scoreRows ?? []).filter(s => cfg && s.methodology_version === cfg.methodology_version)
+  const scores = cfg ? (scoreRows ?? []) : []
   const groups = [...new Set(scores.map(s => s.comparison_group))]
   const { data: anchors } = cfg && groups.length
     ? await supabase

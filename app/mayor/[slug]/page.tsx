@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { AuthorityYearly } from '@/types/db'
-import { loadAuthority } from '@/lib/loadAuthority'
+import { loadAuthority, ACTIVE_METHOD } from '@/lib/loadAuthority'
 import MayorProfile from './MayorProfile'
 import JsonLd from '@/lib/JsonLd'
 import { B_COLUMNS, authorityDescription, authorityJsonLd, pageMetadata } from '@/lib/seo'
@@ -42,6 +42,7 @@ export async function generateMetadata({ params }: Props) {
       .from('scores')
       .select('comparison_group, group_size')
       .eq('authority_id', auth.id)
+      .eq('methodology_version', ACTIVE_METHOD)
       .order('data_year', { ascending: false })
       .limit(1)
       .maybeSingle(),
