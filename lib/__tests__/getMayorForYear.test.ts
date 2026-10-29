@@ -44,6 +44,7 @@ describe('termAttributedYears — which data years are a term\'s', () => {
     ['term_2013', [2014, 2018]],
     ['term_2018', [2019, 2023]],
     ['term_2024_regular', [2024, 2028]],
+    ['term_2021_special', [2022, 2023]],
     ['term_2023_special', [2023, 2025]],
     ['term_2024_nov', [2025, 2029]],
     ['term_2025_feb', [2025, 2029]],
@@ -167,6 +168,14 @@ describe('getMayorForYear — which term a data year belongs to', () => {
     expect(labelFor(terms, 2022)).toBe('term_2018')
     expect(labelFor(terms, 2023)).toBe('term_2023_special')
     expect(labelFor(terms, 2024)).toBe('term_2023_special')
+  })
+
+  it('lets term_2021_special take over from 2022, until the 2024 term', () => {
+    const terms = [term('term_2013'), term('term_2018'), term('term_2021_special'), term('term_2024_regular', true)]
+    expect(labelFor(terms, 2021)).toBe('term_2018')
+    expect(labelFor(terms, 2022)).toBe('term_2021_special')
+    expect(labelFor(terms, 2023)).toBe('term_2021_special')
+    expect(labelFor(terms, 2024)).toBe('term_2024_regular')
   })
 
   it('uses the current term from 2026 on', () => {

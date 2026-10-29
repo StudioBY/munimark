@@ -18,7 +18,8 @@ export interface MayorForYear {
  *
  * Term attribution logic (data-driven — no hardcoded city names):
  *   year 2014-2018 → term_2013   (2013 belongs to the 2008 term, absent here)
- *   year 2019-2023 → term_2018 (unless term_2023_special exists → use it from 2023+)
+ *   year 2019-2023 → term_2018 (unless term_2021_special exists → use it from 2022+,
+ *                                or term_2023_special → use it from 2023+)
  *   year 2024-2025 → term_2024_regular if it exists;
  *     BUT if the authority's latest election is term_2024_nov or term_2025_feb,
  *     year 2024 still belongs to term_2018 (war-delayed elections)
@@ -88,6 +89,11 @@ export function getMayorForYear(
 
   // ── Year 2019-2023 ──
   if (year >= 2019) {
+    // a 2021 special election (נחל שורק: the head left in August 2021) takes 2022 on
+    if (year >= 2022) {
+      const special2021 = byLabel('term_2021_special')
+      if (special2021) return toResult(special2021)
+    }
     // term_2023_special overrides from 2023+
     if (year >= 2023) {
       const special2023 = byLabel('term_2023_special')
@@ -131,6 +137,7 @@ export function termSpanYears(termLabel: string): [number, number | null] {
   switch (termLabel) {
     case 'term_2013':             return [2013, 2018]
     case 'term_2018':             return [2018, 2024]
+    case 'term_2021_special':     return [2021, 2024]
     case 'term_2023_special':     return [2023, 2024]
     case 'term_2023_appointed':   return [2023, 2024]
     case 'term_2024_regular':     return [2024, null]   // current
@@ -162,6 +169,7 @@ export function termDisplayLabel(termLabel: string): string {
     term_2024_regular: 'קדנציית 2024',
     term_2024_nov: 'קדנציית 2024 (נובמבר)',
     term_2025_feb: 'קדנציית 2025 (פברואר)',
+    term_2021_special: 'קדנציה מיוחדת 2021',
     term_2023_special: 'קדנציה מיוחדת 2023',
     term_2025_replacement: 'מינוי 2025',
     term_2026_repeat: 'בחירות חוזרות 2026',
@@ -188,6 +196,7 @@ export function termAttributedYears(termLabel: string): [number, number] {
   switch (termLabel) {
     case 'term_2013':             return [2014, 2018]
     case 'term_2018':             return [2019, 2023]
+    case 'term_2021_special':     return [2022, 2023]
     case 'term_2023_special':     return [2023, 2025]
     case 'term_2024_regular':     return [2024, 2028]
     case 'term_2024_nov':         return [2025, 2029]

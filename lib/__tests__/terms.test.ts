@@ -28,6 +28,10 @@ describe('authorityTerms — a term ends where the next one in the same authorit
     expect(ts[0].window).toEqual([2019, 2022])
     expect(termForYear(ts, 2023)?.name).toBe('B')
   })
+  it('Nahal Sorek: a special 2021 election takes 2022–2023, then the regular 2024 term', () => {
+    const ts = authorityTerms([t('term_2018', 'A'), t('term_2021_special', 'B'), t('term_2024_regular', 'B', true)])
+    expect(ts.map(x => [x.name, x.window])).toEqual([['A', [2019, 2021]], ['B', [2022, 2023]], ['B', [2024, 2028]]])
+  })
   it('sorts by start regardless of input order', () => {
     const ts = authorityTerms([t('term_2024_regular', 'C', true), t('term_2013', 'A'), t('term_2018', 'B')])
     expect(ts.map(x => x.name)).toEqual(['A', 'B', 'C'])
@@ -37,6 +41,10 @@ describe('authorityTerms — a term ends where the next one in the same authorit
 
 describe('authorityTerms — a head who left mid-term (migration 015)', () => {
   const left = (x: MayorTerm, d: string): MayorTerm => ({ ...x, left_office: d, left_office_source: 'test' })
+  it('Nahal Sorek: left in August 2021 keeps 2021, and the special election leaves no interim', () => {
+    const ts = authorityTerms([left(t('term_2018', 'אסקוזידו'), '2021-08-01'), t('term_2021_special', 'רייכנר'), t('term_2024_regular', 'רייכנר', true)])
+    expect(ts.map(x => [x.name, x.window])).toEqual([['אסקוזידו', [2019, 2021]], ['רייכנר', [2022, 2023]], ['רייכנר', [2024, 2028]]])
+  })
   it('Shaar HaNegev: killed 7.10.2023, election postponed to November 2024 — 2023 is his, 2024 an interim', () => {
     const ts = authorityTerms([left(t('term_2018', 'ליבשטין'), '2023-10-07'), t('term_2024_nov', 'אפשטיין', true)])
     expect(ts.map(x => [x.name, x.window])).toEqual([['ליבשטין', [2019, 2023]], ['ממלא/ת מקום', [2024, 2024]], ['אפשטיין', [2025, 2029]]])

@@ -97,7 +97,7 @@ function isBreakInService(prev: MayorTerm | undefined, curr: MayorTerm): boolean
 }
 
 const TERM_ORDER = [
-  'term_2013', 'term_2018', 'term_2023_special',
+  'term_2013', 'term_2018', 'term_2021_special', 'term_2023_special',
   'term_2024_regular', 'term_2024_nov', 'term_2025_feb',
   'term_2025_replacement', 'term_2026_repeat',
 ]
