@@ -248,7 +248,7 @@ describe('personJsonLd — a field with no data is not written', () => {
       authorities: [authRow],
     })
     expect(ld.jobTitle).toBe('ראש עיריית אשדוד')
-    expect(ld.worksFor).toMatchObject({ '@id': `${SITE_URL}/mayor/ashdod#org` })
+    expect(ld.worksFor).toMatchObject({ '@id': `${SITE_URL}/authority/ashdod#org` })
     expect(ld.sameAs).toEqual(['https://he.wikipedia.org/wiki/X'])
     expect(ld['@id']).toBe(`${SITE_URL}/person/ploni-almoni#person`)
     expectAbsoluteIds(ld)
@@ -277,7 +277,7 @@ describe('authorityJsonLd — a field with no data is not written', () => {
   it('links the current head to their person page with an absolute @id', () => {
     const ld = authorityJsonLd({ authority: ashdod, district: 'הדרום', mayor: { name: 'פלוני אלמוני', slug: 'ploni-almoni' } })
     expect(ld.employee).toMatchObject({ '@id': `${SITE_URL}/person/ploni-almoni#person` })
-    expect(ld['@id']).toBe(`${SITE_URL}/mayor/ashdod#org`)
+    expect(ld['@id']).toBe(`${SITE_URL}/authority/ashdod#org`)
     expectAbsoluteIds(ld)
     expectNoEmptyValues(ld)
   })

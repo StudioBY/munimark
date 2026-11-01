@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { SITE_URL } from '@/lib/seo'
+import { SITE_URL, SITE_INDEXABLE } from '@/lib/seo'
 
 // Munimark exists so that information about local government is easy to
 // find, cite and check. That includes AI crawlers: a model that answers a
@@ -22,6 +22,8 @@ const AI_AGENTS = [
 ]
 
 export default function robots(): MetadataRoute.Robots {
+  // Closed for now (SITE_INDEXABLE): every agent, search and AI alike.
+  if (!SITE_INDEXABLE) return { rules: [{ userAgent: '*', disallow: '/' }] }
   return {
     rules: [
       { userAgent: '*', allow: '/' },

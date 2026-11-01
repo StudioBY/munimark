@@ -3,9 +3,8 @@ import { loadAuthority, LETTERS_METHOD } from '@/lib/loadAuthority'
 import { authorityTypePrefix } from '@/lib/getMayorForYear'
 import AuthorityProfile from './AuthorityProfile'
 
-// Draft v2 of the authority page: the authority first, its heads second.
-// Lives beside /mayor/[slug] so the two can be compared before one replaces
-// the other. Not linked from anywhere and not in the sitemap.
+// The authority page in letter grades: the authority first, its heads second.
+// Replaced /mayor/[slug] when the site switched to letters (2026-11-01).
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -18,7 +17,6 @@ export async function generateMetadata({ params }: Props) {
   const { authority } = data
   return {
     title: `${authorityTypePrefix(authority.authority_type)} ${authority.name_display} | Munimark`,
-    robots: { index: false, follow: false },
   }
 }
 

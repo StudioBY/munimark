@@ -1,122 +1,56 @@
+import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
-import type { Mayor, AuthorityYearly, MayorTerm, Authority } from '@/types/db'
-import PersonProfile from './PersonProfile'
-import JsonLd from '@/lib/JsonLd'
-import { pageMetadata, personDescription, personJsonLd } from '@/lib/seo'
+import { loadAuthority, LETTERS_METHOD } from '@/lib/loadAuthority'
+import type { Mayor, MayorTerm, Authority } from '@/types/db'
+import HeadProfile from './HeadProfile'
+import './head.css'
+
+// The head's page in letter grades: one person, every term they served, in
+// every authority. Replaced the old /person page when the site switched to
+// letters (2026-11-01).
 
 interface Props {
   params: Promise<{ slug: string }>
 }
 
+// cached per request: the metadata and the page ask for the same head
+const loadHead = cache(async (slug: string) => {
+  const supabase = await createClient()
+  const { data: person } = await supabase.from('mayors').select('*').eq('slug', slug).maybeSingle<Mayor>()
+  if (!person) return null
+
+  const { data: terms } = await supabase
+    .from('mayor_terms')
+    .select('authority_symbol, authority_type')
+    .eq('mayor_id', person.id)
+    .returns<Pick<MayorTerm, 'authority_symbol' | 'authority_type'>[]>()
+  // By symbol AND type, like loadAuthority: 6 CBS symbols are shared by a
+  // local and a regional council. (mayor_terms.authority_slug was filled from
+  // the same join on 2026-10-29, fix_term_authority_slugs.)
+  const keys = new Set((terms ?? []).map(t => `${t.authority_symbol}|${t.authority_type}`))
+  const symbols = [...new Set((terms ?? []).map(t => t.authority_symbol))]
+  const { data: auths } = symbols.length
+    ? await supabase.from('authorities').select('slug, symbol, authority_type').in('symbol', symbols)
+        .returns<Pick<Authority, 'slug' | 'symbol' | 'authority_type'>[]>()
+    : { data: [] as Pick<Authority, 'slug' | 'symbol' | 'authority_type'>[] }
+  const slugs = (auths ?? []).filter(a => keys.has(`${a.symbol}|${a.authority_type}`)).map(a => a.slug)
+  const authorities = (await Promise.all(slugs.map(s => loadAuthority(s, LETTERS_METHOD)))).filter(a => a != null)
+  return { person, authorities }
+})
+
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
-  const supabase = await createClient()
-
-  const { data: person } = await supabase
-    .from('mayors')
-    .select('*')
-    .eq('slug', slug)
-    .single<Mayor>()
-
-  if (!person) return { title: 'Munimark' }
-
-  // The description names the posts held, from mayor_terms, so it needs the
-  // terms and the authorities they point to — the same lookup as the page.
-  const { data: terms } = await supabase
-    .from('mayor_terms')
-    .select('authority_symbol, authority_type, term_label, is_current')
-    .eq('mayor_id', person.id)
-  const symbols = [...new Set((terms ?? []).map(t => t.authority_symbol))]
-  const { data: authorities } = symbols.length
-    ? await supabase
-        .from('authorities')
-        .select('symbol, authority_type, name_display, slug')
-        .in('symbol', symbols)
-    : { data: [] }
-
-  return pageMetadata({
-    title: `${person.name} | Munimark`,
-    description: personDescription({ person, terms: terms ?? [], authorities: authorities ?? [] }),
-    path: `/person/${slug}`,
-    image: person.photo_url,
-    type: 'profile',
-  })
-}
-
-export async function generateStaticParams() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!url || url.startsWith('your_')) return []
-  const supabase = createAdminClient()
-  const { data } = await supabase
-    .from('mayors')
-    .select('slug')
-    .not('slug', 'is', null)
-  return (data ?? []).map(r => ({ slug: r.slug! }))
-}
-
-export default async function PersonPage({ params }: Props) {
-  const { slug } = await params
-  const supabase = await createClient()
-
-  // Fetch person record
-  const { data: person } = await supabase
-    .from('mayors')
-    .select('*')
-    .eq('slug', slug)
-    .single<Mayor>()
-
-  if (!person) notFound()
-
-  // Fetch all their mayor_terms (possibly across multiple authorities)
-  const { data: terms } = await supabase
-    .from('mayor_terms')
-    .select('*')
-    .eq('mayor_id', person.id)
-    .returns<MayorTerm[]>()
-
-  const termList = terms ?? []
-
-  // Get unique authority symbols from their terms
-  const authKeys = [...new Set(termList.map(t => `${t.authority_symbol}|${t.authority_type}`))]
-
-  // Fetch authority records and yearly data for their authorities
-  let authorities: Authority[] = []
-  let allYears: AuthorityYearly[] = []
-
-  if (authKeys.length > 0) {
-    // Get authorities by symbol
-    const symbols = [...new Set(termList.map(t => t.authority_symbol))]
-    const { data: auths } = await supabase
-      .from('authorities')
-      .select('*')
-      .in('symbol', symbols)
-      .returns<Authority[]>()
-    authorities = auths ?? []
-
-    // Get yearly data for those authorities
-    const authIds = authorities.map(a => a.id)
-    if (authIds.length > 0) {
-      const { data: years } = await supabase
-        .from('authority_yearly')
-        .select('*')
-        .in('authority_id', authIds)
-        .order('data_year', { ascending: true })
-        .returns<AuthorityYearly[]>()
-      allYears = years ?? []
-    }
+  const data = await loadHead(slug)
+  if (!data) return { title: 'Munimark' }
+  return {
+    title: `${data.person.name} | Munimark`,
   }
+}
 
-  return (
-    <>
-      <JsonLd data={personJsonLd({ person, terms: termList, authorities })} />
-      <PersonProfile
-        person={person}
-        terms={termList}
-        authorities={authorities}
-        years={allYears}
-      />
-    </>
-  )
+export default async function HeadPage({ params }: Props) {
+  const { slug } = await params
+  const data = await loadHead(slug)
+  if (!data) notFound()
+  return <HeadProfile person={data.person} authorities={data.authorities} />
 }

@@ -117,7 +117,7 @@ export default function AuthorityDirectory({ rows }: { rows: DirectoryRow[] }) {
           {visible.map(auth => (
             <Link
               key={auth.slug}
-              href={`/mayor/${auth.slug}`}
+              href={`/authority/${auth.slug}`}
               className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all p-4 flex gap-4 items-center"
             >
               {auth.mayorPhoto ? (

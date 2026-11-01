@@ -11,10 +11,11 @@ import { headRecord } from '@/lib/head'
 import type { HeadStint } from '@/lib/head'
 import { authorityFullName } from '@/lib/seo'
 import { ALL, hasPerformanceData, toYearMap } from '@/lib/authorityMetrics'
-import PerformanceChart from '@/app/mayor/[slug]/PerformanceChart'
+import PerformanceChart from '@/app/authority/[slug]/PerformanceChart'
 import { MunimarkMark, Seal } from '@/app/authority/[slug]/Brand'
 import MetricTrend from '@/app/authority/[slug]/MetricTrend'
 import { Letter, LetterBreakdown } from '@/app/authority/[slug]/LetterBreakdown'
+import { PERSON_REVIEW } from '@/lib/reviewFlags'
 
 // Same as the authority page: context under the index metrics, never scored.
 const BACKGROUND = ['תקציב_לנפש', 'חינוך_אחוז', 'רווחה_אחוז', 'תואר_ראשון', 'תוחלת_חיים', 'צעירים', 'קשישים']
@@ -125,7 +126,7 @@ export default function HeadProfile({ person, authorities }: { person: Mayor; au
       </nav>
 
       <div className="mm-page">
-        <div className="ap-draft">טיוטה: גרסה חדשה של עמוד ראש הרשות. <Link href={`/person/${slug}`}>לגרסה הנוכחית</Link></div>
+        {PERSON_REVIEW[slug] && <div className="ap-draft">בבדיקה: {PERSON_REVIEW[slug]}</div>}
 
         {/* ── HERO: the person, then their seal ─────────────────────── */}
         <div className="card ap2-hero section">

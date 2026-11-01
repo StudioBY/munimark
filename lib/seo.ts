@@ -12,6 +12,10 @@ import { termCountLabel, termSpanYears } from '@/lib/getMayorForYear'
 // is partly invented — the second gets quoted, with our name on it.
 
 export const SITE_URL = 'https://munimark.co.il'
+// Closed to search engines until the user opens it (decided 2026-11-01: the
+// site goes up for people with the link first). Read by the root layout's
+// robots meta and by robots.txt — flip this one line to open it.
+export const SITE_INDEXABLE = false
 export const SITE_NAME = 'Munimark'
 export const SITE_DESCRIPTION =
   'ביצועי הרשויות המקומיות בישראל וראשי הרשויות שלהן, על בסיס נתוני הלשכה המרכזית לסטטיסטיקה ומשרד הפנים.'
@@ -85,10 +89,10 @@ function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
   ) as Partial<T>
 }
 
-export const authorityUrl = (slug: string) => `${SITE_URL}/mayor/${slug}`
+export const authorityUrl = (slug: string) => `${SITE_URL}/authority/${slug}`
 export const personUrl = (slug: string) => `${SITE_URL}/person/${slug}`
 
-// ── Authority (/mayor/[slug]) ────────────────────────────────────────────────
+// ── Authority (/authority/[slug]) ────────────────────────────────────────────────
 
 // The 18 B (performance) columns — the same set MayorProfile uses to decide
 // whether a year carries performance data. Kept in step with it by hand.

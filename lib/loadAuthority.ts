@@ -1,16 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Authority, Mayor, AuthorityYearly, Score, MayorTerm, ScoringAnchor, ScoringConfig } from '@/types/db'
 
-// The methodology the site shows. Pinned, not "newest config": v2 (letters) is
-// written beside v1 before the letter interface exists, and a page that took
-// the newest row would switch to it the moment it lands, showing v2 rows in a
-// v1 layout. Change this together with the interface, never alone.
-export const ACTIVE_METHOD = 'v1-2026-10-11'
-// The letter grades. The draft authority page shows these; the mayor page
-// stays on ACTIVE_METHOD until it has a letter layout too.
+// The methodology the site shows. Pinned, not "newest config": a page that took
+// the newest row would switch to a new method the moment it is written, before
+// its interface exists. Change this together with the interface, never alone.
+// Letters (v2.1) since the site switched on 2026-11-01; v1 rows stay in the DB.
 export const LETTERS_METHOD = 'v2.1-2026-10-29'
+export const ACTIVE_METHOD = LETTERS_METHOD
 // v2 re-used v1's anchors; v2.1 has its own (v1's, with the surplus share).
-const ANCHORS_OF: Record<string, string> = { 'v2-2026-10-29': ACTIVE_METHOD }
+const ANCHORS_OF: Record<string, string> = { 'v2-2026-10-29': 'v1-2026-10-11' }
 
 export interface AuthorityPageData {
   authority: Authority

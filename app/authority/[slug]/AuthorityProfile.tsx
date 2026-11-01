@@ -11,11 +11,11 @@ import type { AuthorityTerm } from '@/lib/terms'
 import { authorityFullName } from '@/lib/seo'
 import { AUTHORITY_LOGOS } from '@/lib/logos'
 import { ALL, hasPerformanceData, latestValue, toYearMap } from '@/lib/authorityMetrics'
-import { threeYearSpan } from '@/app/mayor/[slug]/ScoreSection'
-import PerformanceChart from '@/app/mayor/[slug]/PerformanceChart'
+import PerformanceChart from './PerformanceChart'
 import { MunimarkMark, Seal } from './Brand'
 import MetricTrend from './MetricTrend'
 import { Letter, LetterBreakdown } from './LetterBreakdown'
+import { AUTHORITY_REVIEW } from '@/lib/reviewFlags'
 
 // Shown for context under the index metrics, never scored: spending is not
 // performance, and demographics are what an authority works with.
@@ -152,7 +152,7 @@ export default function AuthorityProfile({ authority, years, scores, anchors, cf
       </nav>
 
       <div className="mm-page">
-        <div className="ap-draft">טיוטה: גרסה חדשה של עמוד הרשות. <Link href={`/mayor/${authority.slug}`}>לגרסה הנוכחית</Link></div>
+        {AUTHORITY_REVIEW[authority.slug] && <div className="ap-draft">בבדיקה: {AUTHORITY_REVIEW[authority.slug]}</div>}
 
         {/* ── HERO: the authority, then its seal ──────────────────── */}
         <div className="card ap2-hero section">
@@ -169,7 +169,7 @@ export default function AuthorityProfile({ authority, years, scores, anchors, cf
                 {current && (
                   <div className="ap2-head">
                     {headTitle(authority.authority_type)}:{' '}
-                    {current.personSlug ? <Link href={`/head/${current.personSlug}`}>{current.name}</Link> : <b>{current.name}</b>}
+                    {current.personSlug ? <Link href={`/person/${current.personSlug}`}>{current.name}</Link> : <b>{current.name}</b>}
                     <span className="ap2-head-term"> · קדנציה {spanText(current.spanLabel)}</span>
                   </div>
                 )}
@@ -284,7 +284,7 @@ export default function AuthorityProfile({ authority, years, scores, anchors, cf
                   <Avatar t={sel} size={64} />
                   <div className="tx-panel-id">
                     <div className="tx-panel-name">
-                      {sel.personSlug ? <Link href={`/head/${sel.personSlug}`}>{sel.name}</Link> : sel.name}
+                      {sel.personSlug ? <Link href={`/person/${sel.personSlug}`}>{sel.name}</Link> : sel.name}
                     </div>
                     <div className="tx-panel-span">
                       קדנציה {spanText(sel.spanLabel)}{sel.isCurrent && <span className="ap-current"> · מכהן/ת</span>}

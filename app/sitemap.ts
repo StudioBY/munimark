@@ -20,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!supabase) return entries
 
   const [{ data: authorities, error: authErr }, { data: people, error: peopleErr }] = await Promise.all([
-    // Only authorities with yearly rows: /mayor/[slug] returns 404 without
+    // Only authorities with yearly rows: /authority/[slug] returns 404 without
     // them, and a sitemap that lists 404s teaches crawlers to distrust it.
     supabase.from('authorities').select('slug, authority_yearly!inner(data_year)').limit(1, { referencedTable: 'authority_yearly' }),
     supabase.from('mayors').select('slug').not('slug', 'is', null),
@@ -30,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (peopleErr) throw new Error(`sitemap: mayors query failed — ${peopleErr.message}`)
 
   for (const a of authorities ?? []) {
-    entries.push({ url: `${SITE_URL}/mayor/${a.slug}`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 })
+    entries.push({ url: `${SITE_URL}/authority/${a.slug}`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 })
   }
   // A person can appear more than once only if data is duplicated; list each URL once.
   for (const slug of new Set((people ?? []).map(p => p.slug as string))) {

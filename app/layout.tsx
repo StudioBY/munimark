@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Heebo } from "next/font/google";
 import "./globals.css";
-import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, SITE_INDEXABLE } from "@/lib/seo";
 
 const heebo = Heebo({
   subsets: ['hebrew', 'latin'],
@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   title: 'Munimark — דירוג ראשי רשויות',
   description: 'פלטפורמה לדירוג וניתוח ביצועי ראשי רשויות מקומיות בישראל',
   applicationName: SITE_NAME,
+  // every page inherits this; see SITE_INDEXABLE
+  robots: SITE_INDEXABLE ? undefined : { index: false, follow: false },
   openGraph: {
     siteName: SITE_NAME,
     locale: 'he_IL',
