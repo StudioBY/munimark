@@ -98,9 +98,10 @@ export default function HeadProfile({ person, authorities }: { person: Mayor; au
   const defaultSeg = [...segs].reverse().find(s => s.grade!.scored > 1) ?? segs[segs.length - 1] ?? null
   const [selKey, setSelKey] = useState<string | null>(defaultSeg ? `${defaultSeg.authoritySlug}/${defaultSeg.term.label}` : null)
   const [focusYear, setFocusYear] = useState<number | null>(null)
-  const [avgView, setAvgView] = useState(false)
+  // the term average by default (decided 2026-11-03); a year is one click away
+  const [avgView, setAvgView] = useState(true)
   const keyOf = (s: HeadStint) => `${s.authoritySlug}/${s.term.label}`
-  const pick = (s: HeadStint) => { setSelKey(keyOf(s)); setFocusYear(null); setAvgView(false) }
+  const pick = (s: HeadStint) => { setSelKey(keyOf(s)); setFocusYear(null); setAvgView(true) }
 
   const sel = segs.find(s => keyOf(s) === selKey) ?? null
   const sc = sel ? bySlug.get(sel.authoritySlug)! : null
@@ -115,6 +116,7 @@ export default function HeadProfile({ person, authorities }: { person: Mayor; au
   const yearBreakdowns = sc?.cfg
     ? selScores.map(s => ({ year: s.data_year, b: metricBreakdown(sc.dataYears.find(y => y.data_year === s.data_year), s.comparison_group, sc.anchors, sc.cfg!.domains, sc.cfg!.metric_cuts) }))
     : []
+  const showAvg = avgView && selScores.length > 1
   const selYRS = sel && sc ? sc.dataYears.map(y => y.data_year).filter(y => y >= sel.window[0] && y <= sel.window[1]) : []
 
   return (
@@ -149,7 +151,7 @@ export default function HeadProfile({ person, authorities }: { person: Mayor; au
             </div>
             {person.background && (
               <div className="hd-bio">
-                {person.background.slice(0, 280)}{person.background.length > 280 ? '…' : ''}
+                {person.background.slice(0, 700)}{person.background.length > 700 ? '…' : ''}
                 {person.wikipedia_url && <> <a href={person.wikipedia_url} target="_blank" rel="noopener noreferrer">ויקיפדיה ←</a></>}
               </div>
             )}
@@ -299,19 +301,19 @@ export default function HeadProfile({ person, authorities }: { person: Mayor; au
                     <span className="tx-years-l">פירוט:</span>
                     <div className="year-sel">
                       {selScores.map(s => (
-                        <button key={s.data_year} className={`yr${!avgView && s.data_year === focus?.data_year ? ' active' : ''}`} onClick={() => { setFocusYear(s.data_year); setAvgView(false) }}>
+                        <button key={s.data_year} className={`yr${!showAvg && s.data_year === focus?.data_year ? ' active' : ''}`} onClick={() => { setFocusYear(s.data_year); setAvgView(false) }}>
                           {s.data_year}
                         </button>
                       ))}
                       {selScores.length > 1 && (
-                        <button className={`yr yr-avg${avgView ? ' active' : ''}`} onClick={() => setAvgView(true)}>ממוצע הקדנציה</button>
+                        <button className={`yr yr-avg${showAvg ? ' active' : ''}`} onClick={() => setAvgView(true)}>ממוצע הקדנציה</button>
                       )}
                     </div>
                   </div>
                 )}
 
                 {focus && breakdown && sc.cfg.domain_cuts && (
-                  <LetterBreakdown view={avgView ? 'avg' : 'year'} focus={focus} breakdown={breakdown}
+                  <LetterBreakdown view={showAvg ? 'avg' : 'year'} focus={focus} breakdown={breakdown}
                     yearBreakdowns={yearBreakdowns} grade={sel.grade!} domainCuts={sc.cfg.domain_cuts} />
                 )}
 
