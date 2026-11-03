@@ -105,13 +105,16 @@ export default function AuthorityProfile({ authority, years, scores, anchors, cf
   const selScores = sel ? scores.filter(s => s.data_year >= sel.window[0] && s.data_year <= sel.window[1]) : []
   const [focusYear, setFocusYear] = useState<number | null>(null)
   // the year view (the default) or the term average, beside the years
-  const [avgView, setAvgView] = useState(false)
+  // the term average by default (decided 2026-11-03), as on the head's page
+  const [avgView, setAvgView] = useState(true)
   const focus = selScores.find(s => s.data_year === focusYear) ?? selScores[selScores.length - 1] ?? null
   const breakdown = focus && cfg
     ? metricBreakdown(dataYears.find(y => y.data_year === focus.data_year), focus.comparison_group, anchors, cfg.domains, cfg.metric_cuts)
     : null
+  // a term with one scored year has no average to show
+  const showAvg = avgView && selScores.filter(s => s.points != null).length > 1
   const selYRS = sel ? dataYears.map(y => y.data_year).filter(y => y >= sel.window[0] && y <= sel.window[1]) : []
-  const pick = (label: string) => { setSelLabel(label); setFocusYear(null); setAvgView(false) }
+  const pick = (label: string) => { setSelLabel(label); setFocusYear(null); setAvgView(true) }
   const yearBreakdowns = cfg
     ? selScores.filter(s => s.points != null).map(s => ({
         year: s.data_year,
@@ -323,19 +326,19 @@ export default function AuthorityProfile({ authority, years, scores, anchors, cf
                     <span className="tx-years-l">פירוט:</span>
                     <div className="year-sel">
                       {selScores.map(s => (
-                        <button key={s.data_year} className={`yr${!avgView && s.data_year === focus?.data_year ? ' active' : ''}`} onClick={() => { setFocusYear(s.data_year); setAvgView(false) }}>
+                        <button key={s.data_year} className={`yr${!showAvg && s.data_year === focus?.data_year ? ' active' : ''}`} onClick={() => { setFocusYear(s.data_year); setAvgView(false) }}>
                           {s.data_year}
                         </button>
                       ))}
                       {selScores.length > 1 && (
-                        <button className={`yr yr-avg${avgView ? ' active' : ''}`} onClick={() => setAvgView(true)}>ממוצע הקדנציה</button>
+                        <button className={`yr yr-avg${showAvg ? ' active' : ''}`} onClick={() => setAvgView(true)}>ממוצע הקדנציה</button>
                       )}
                     </div>
                   </div>
                 )}
 
                 {focus && breakdown && selSeg.grade && cfg?.domain_cuts && (
-                  <LetterBreakdown view={avgView ? 'avg' : 'year'} focus={focus} breakdown={breakdown}
+                  <LetterBreakdown view={showAvg ? 'avg' : 'year'} focus={focus} breakdown={breakdown}
                     yearBreakdowns={yearBreakdowns} grade={selSeg.grade} domainCuts={cfg.domain_cuts} />
                 )}
 
